@@ -108,9 +108,9 @@ class Throttle (streamsx.spl.op.Map):
     def __init__(self, stream, rate, *, period=None, includePunctuations=None, precise=None, name=None):
         kind="spl.utility::Throttle"
         params = dict()
-        params['rate'] = rate
+        params['rate'] = float64(rate)
         if period is not None:
-            params['period'] = period
+            params['period'] = float64(period)
         if includePunctuations is not None:
             params['includePunctuations'] = includePunctuations
         if precise is not None:
@@ -192,6 +192,5 @@ class DeDuplicate (streamsx.spl.op.Map):
             params['resetOnDuplicate'] = resetOnDuplicate
         if flushOnPunctuation is not None:
             params['flushOnPunctuation'] = flushOnPunctuation
-        print("DeDup", params)
         super(DeDuplicate, self).__init__(kind,stream,params=params,name=name)
 
