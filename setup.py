@@ -21,4 +21,7 @@ setup(
     'Programming Language :: Python :: 3.5',
   ],
   install_requires=['streamsx'],
+  
+  test_suite='nose.collector',
+  tests_require=['nose']
 )

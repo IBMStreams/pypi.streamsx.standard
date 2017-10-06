@@ -14,7 +14,7 @@ class Beacon(streamsx.spl.op.Source):
     """
 
     @staticmethod
-    def sequence(topology, *, period=None, iterations=None, delay=None, name=None):
+    def sequence(topology, period=None, iterations=None, delay=None, name=None):
         """Create a sequenced stream.
 
         Creates a structured stream with schema :py:const:`SEQUENCE_SCHEMA` with
@@ -46,7 +46,7 @@ class Beacon(streamsx.spl.op.Source):
         if period is not None:
             params['period'] = float64(period)
         if iterations is not None:
-            params['iterations'] = uint64(iterations)
+            params['iterations'] = uint32(iterations)
         if delay is not None:
             params['initDelay'] = float64(delay)
         if triggerCount is not None:
