@@ -6,38 +6,37 @@ import streamsx.spl.op
 from streamsx.topology.schema import StreamSchema
 from streamsx.spl.types import float64, uint32, uint64
 
-class Beacon(streamsx.spl.op.Source):
-    SEQUENCE_SCHEMA = StreamSchema('tuple<uint64 seq, timestamp ts>')
-    """Structured schema containing a sequence identifier and a timestamp.
+SEQUENCE_SCHEMA = StreamSchema('tuple<uint64 seq, timestamp ts>')
+"""Structured schema containing a sequence identifier and a timestamp.
 
-    ``'tuple<uint64 seq, timestamp ts>'``
+``'tuple<uint64 seq, timestamp ts>'``
+"""
+
+def sequence(topology, period=None, iterations=None, delay=None, name=None):
+    """Create a sequenced stream.
+
+    Creates a structured stream with schema :py:const:`SEQUENCE_SCHEMA` with
+    the `seq` attribute starting at zero and monotonically increasing and
+    `ts` attribute set to the time the tuple was generated.
+
+    Args:
+        period(float): Period of tuple generation in seconds, if `None` then tuples
+        are generated as fast as possible.
+        iterations(int): Number of tuples on the stream, if `None` then the stream
+            is infinite.
+        delay(float): Delay in seconds before the first tuple is submitted, if `None` then the
+        tuples are submitted as soon as possible.
+        name(str): Name of the stream, if `None` a generated name is used.
+
+    Returns:
+        Stream: Structured stream containing an ever increasing `seq` attribute.
     """
+    _op = Beacon(topology, SEQUENCE_SCHEMA, period=period, iterations=iterations, delay=delay, name=name)
+    _op.seq = _op.output('IterationCount()')
+    _op.ts = _op.output('getTimestamp()')
+    return _op.stream
 
-    @staticmethod
-    def sequence(topology, period=None, iterations=None, delay=None, name=None):
-        """Create a sequenced stream.
-
-        Creates a structured stream with schema :py:const:`SEQUENCE_SCHEMA` with
-        the `seq` attribute starting at zero and monotonically increasing and
-        `ts` attribute set to the time the tuple was generated.
-
-        Args:
-            period(float): Period of tuple generation in seconds, if `None` then tuples
-            are generated as fast as possible.
-            iterations(int): Number of tuples on the stream, if `None` then the stream
-                is infinite.
-            delay(float): Delay in seconds before the first tuple is submitted, if `None` then the
-            tuples are submitted as soon as possible.
-            name(str): Name of the stream, if `None` a generated name is used.
-
-        Returns:
-            Stream: Structured stream containing an ever increasing `seq` attribute.
-        """
-        _op = Beacon(topology, Beacon.SEQUENCE_SCHEMA, period=period, iterations=iterations, delay=delay, name=name)
-        _op.seq = _op.output('IterationCount()')
-        _op.ts = _op.output('getTimestamp()')
-        return _op.stream
-
+class Beacon(streamsx.spl.op.Source):
     def __init__(self, topology, schema, *, period=None, iterations=None, delay=None, triggerCount=None, name=None):
         kind="spl.utility::Beacon"
         inputs=None
@@ -53,35 +52,35 @@ class Beacon(streamsx.spl.op.Source):
             params['triggerCount'] = triggerCount
         super(Beacon, self).__init__(topology,kind,schemas,params,name)
 
+
+def spray(stream, count, queue=1000, name=None):
+    """Spray tuples to the output ports.
+    Each tuple on `stream` is sent to one (and only one)
+    of the output streams returned by this method.
+    The output port for a specific tuple is not defined,
+    instead each output stream has a dedicated thread and the
+    first available thread will take the tuple and
+    submit it to its output.
+
+    Each input tuple is placed on internal queue before it
+    is submitted to an output stream. If the queue fills up
+    then processing of the input stream is blocked until there
+    is space in the queue.
+
+    Args:
+        count(int): Number of output streams the input stream
+        will be sprayed across.
+        queue(int): Maximum queue size.
+        name(str): Name of the stream, if `None` a generated name is used.
+
+    Returns:
+        list(Stream) : List of output streams
+    """
+    _op = ThreadedSplit(stream, count, queue,name=name)
+    return _op.outputs
+
+
 class ThreadedSplit (streamsx.spl.op.Invoke):
-
-    @staticmethod
-    def spray(stream, count, queue=1000, name=None):
-        """Spray tuples to the output ports.
-        Each tuple on `stream` is sent to one (and only one)
-        of the output streams returned by this method.
-        The output port for a specific tuple is not defined,
-        instead each output stream has a dedicated thread and the
-        first available thread will take the tuple and
-        submit it to its output.
-
-        Each input tuple is placed on internal queue before it
-        is submitted to an output stream. If the queue fills up
-        then processing of the input stream is blocked until there
-        is space in the queue.
-
-        Args:
-            count(int): Number of output streams the input stream
-            will be sprayed across.
-            queue(int): Maximum queue size.
-            name(str): Name of the stream, if `None` a generated name is used.
-
-        Returns:
-            list(Stream) : List of output streams
-        """
-        _op = ThreadedSplit(stream, count, queue=1000,name=name)
-        return _op.outputs
-    
     def __init__(self, stream, count, queue=1000, name=None):
         topology = stream.topology
         kind="spl.utility::ThreadedSplit"
@@ -92,19 +91,17 @@ class ThreadedSplit (streamsx.spl.op.Invoke):
         super(ThreadedSplit, self).__init__(topology,kind,inputs,schemas,params,name)
 
 
+def throttle(stream, rate, precise=False, name=None):
+    """Throttle the rate of a stream.
+    Args:
+         name(str): Name of the stream, if `None` a generated name is used.
+    """
+    _op = Throttle(stream, rate, precise=precise, name=name)
+    return _op.stream
+
 class Throttle (streamsx.spl.op.Map):
     """Stream throttle capability
     """
-
-    @staticmethod
-    def at_rate(stream, rate, precise=False, name=None):
-        """Throttle the rate of a stream.
-        Args:
-             name(str): Name of the stream, if `None` a generated name is used.
-        """
-        _op = Throttle(stream, rate, precise=precise, name=name)
-        return _op.stream
-
     def __init__(self, stream, rate, *, period=None, includePunctuations=None, precise=None, name=None):
         kind="spl.utility::Throttle"
         params = dict()
@@ -118,36 +115,35 @@ class Throttle (streamsx.spl.op.Map):
         super(Throttle, self).__init__(kind,stream,params=params,name=name)
 
 
+def union(inputs, schema, name=None):
+    """Union structured streams with disparate schemas.
+
+    Each tuple on any of the streams in `inputs` results in
+    a tuple on the returned stream.
+
+    All attributes of the output tuple are set from the input tuple,
+    thus the schema of each input must include attributes matching
+    (name and type) the output schema.
+
+    The order of attributes in the input schemas need not match
+    the output schemas and the input schemas may contain additional
+    attributes which will be discarded.
+
+    Args
+        inputs: Streams to be unioned.
+        schema: Schema of output stream
+        name(str): Name of the stream, if `None` a generated name is used.
+
+    Returns:
+        Stream: Stream that is a union of `inputs`.
+
+    """
+    _op = Union(inputs, schema, name=name)
+    return _op.stream
+
 class Union (streamsx.spl.op.Invoke):
     """Union structured streams with disparate schemas.
     """
-
-    @staticmethod
-    def union(inputs, schema, name=None):
-        """Union structured streams with disparate schemas.
-
-        Each tuple on any of the streams in `inputs` results in
-        a tuple on the returned stream.
-
-        All attributes of the output tuple are set from the input tuple,
-        thus the schema of each input must include attributes matching
-        (name and type) the output schema.
-
-        The order of attributes in the input schemas need not match
-        the output schemas and the input schemas may contain additional
-        attributes which will be discarded.
-
-        Args
-            inputs: Streams to be unioned.
-            schema: Schema of output stream
-            name(str): Name of the stream, if `None` a generated name is used.
-
-        Returns:
-            Stream: Stream that is a union of `inputs`.
-
-        """
-        _op = Union(inputs, schema, name=name)
-        return _op.stream
 
     def __init__(self, inputs, schema, *, name=None):
         topology = inputs[0].topology

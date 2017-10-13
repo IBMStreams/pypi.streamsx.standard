@@ -35,40 +35,6 @@ class DirectoryScan(streamsx.spl.op.Source):
         super(DirectoryScan, self).__init__(topology,kind,schemas,params,name)
 
 
-class Files(object):
-    @staticmethod
-    def csv_reader(topology, schema, file, header=False, encoding=None, separator=None, ignoreExtraFields=False, hot=False, name=None):
-        """Read a comma separated value file as a stream.
-
-        The file defined by `file` is read and mapped to a stream
-        with a structured schema of `schema`.
-
-        Args:
-            topology(Topology): Topology to contain the returned stream.
-            schema(StreamSchema): Schema of the returned stream.
-            header: Does the file contain a header.
-            encoding: TBD
-            separator(str): Separator between records (defaults to comma ``,``).
-            ignoreExtraFields:  When `True` then if the file contains more
-                fields than `schema` has attributes they will be ignored.
-                Otherwise if there are extra fields an error is raised.
-            hot(bool): TBD
-            name(str): Name of the stream.
-
-        Return:
-            (Stream): Stream containing records from the file.
-        """
-        fe = streamsx.spl.op.Expression.expression(Format.csv.name)
-        _op = FileSource(topology, schema, file=file, format=fe, hotFile=hot,encoding=encoding,separator=separator,ignoreExtraCSVValues=ignoreExtraFields)
-        return _op.outputs[0]
-
-    @staticmethod
-    def csv_writer(stream, file, append=None, encoding=None, separator=None, flush=None, name=None):
-        """Write a stream as a comma separated value file.
-        """
-        fe = streamsx.spl.op.Expression.expression(Format.csv.name)
-        _op = FileSink(stream, file, format=fe, append=append, encoding=encoding, separator=separator, flush=flush, name=name)
-
 class FileSource(streamsx.spl.op.Invoke):
     
     def __init__(self, topology, schemas, file=None, format=None, defaultTuple=None, parsing=None, hasDelayField=None, compression=None, eolMarker=None, blockSize=None, initDelay=None, hotFile=None, deleteFile=None, moveFileToDirectory=None, separator=None, encoding=None, hasHeaderLine=None, ignoreOpenErrors=None, readPunctuations=None, ignoreExtraCSVValues=None, name=None):
