@@ -5,7 +5,7 @@
 import enum
 import streamsx.spl.op
 from streamsx.topology.schema import StreamSchema
-from streamsx.standard.adapter import Format, Compression
+from streamsx.standard import Format, Compression
 
 
 
@@ -25,7 +25,7 @@ def csv_reader(topology, schema, file, header=False, encoding=None, separator=No
             fields than `schema` has attributes they will be ignored.
             Otherwise if there are extra fields an error is raised.
         hot(bool): TBD
-        name(str): Name of the stream.
+        name(str): Name of the stream, defaults to a generated name.
 
     Return:
         (Stream): Stream containing records from the file.
