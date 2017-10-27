@@ -31,12 +31,23 @@ def sequence(topology, period=None, iterations=None, delay=None, name=None):
     Returns:
         Stream: Structured stream containing an ever increasing `seq` attribute.
     """
-    _op = Beacon(topology, SEQUENCE_SCHEMA, period=period, iterations=iterations, delay=delay, name=name)
+    if iterations is not None:
+        iterations = int(iterations)
+    if period is not None:
+        period = float(period)
+    if name is None:
+        name = 'Sequence'
+        if iterations is not None:
+            name = name + '({:d})'.format(iterations)
+        if period is not None:
+            name = name + ':period={:.3f}s'.format(period)
+
+    _op = _Beacon(topology, SEQUENCE_SCHEMA, period=period, iterations=iterations, delay=delay, name=name)
     _op.seq = _op.output('IterationCount()')
     _op.ts = _op.output('getTimestamp()')
     return _op.stream
 
-class Beacon(streamsx.spl.op.Source):
+class _Beacon(streamsx.spl.op.Source):
     def __init__(self, topology, schema, *, period=None, iterations=None, delay=None, triggerCount=None, name=None):
         kind="spl.utility::Beacon"
         inputs=None
@@ -50,7 +61,7 @@ class Beacon(streamsx.spl.op.Source):
             params['initDelay'] = float64(delay)
         if triggerCount is not None:
             params['triggerCount'] = triggerCount
-        super(Beacon, self).__init__(topology,kind,schemas,params,name)
+        super(_Beacon, self).__init__(topology,kind,schemas,params,name)
 
 
 def spray(stream, count, queue=1000, name=None):
@@ -76,11 +87,11 @@ def spray(stream, count, queue=1000, name=None):
     Returns:
         list(Stream) : List of output streams
     """
-    _op = ThreadedSplit(stream, count, queue,name=name)
+    _op = _ThreadedSplit(stream, count, queue,name=name)
     return _op.outputs
 
 
-class ThreadedSplit (streamsx.spl.op.Invoke):
+class _ThreadedSplit (streamsx.spl.op.Invoke):
     def __init__(self, stream, count, queue=1000, name=None):
         topology = stream.topology
         kind="spl.utility::ThreadedSplit"
@@ -88,7 +99,7 @@ class ThreadedSplit (streamsx.spl.op.Invoke):
         schemas=[stream.oport.schema] * count
         params = dict()
         params['bufferSize'] = uint32(queue)
-        super(ThreadedSplit, self).__init__(topology,kind,inputs,schemas,params,name)
+        super(_ThreadedSplit, self).__init__(topology,kind,inputs,schemas,params,name)
 
 
 def throttle(stream, rate, precise=False, name=None):
@@ -96,10 +107,10 @@ def throttle(stream, rate, precise=False, name=None):
     Args:
          name(str): Name of the stream, if `None` a generated name is used.
     """
-    _op = Throttle(stream, rate, precise=precise, name=name)
+    _op = _Throttle(stream, rate, precise=precise, name=name)
     return _op.stream
 
-class Throttle (streamsx.spl.op.Map):
+class _Throttle (streamsx.spl.op.Map):
     """Stream throttle capability
     """
     def __init__(self, stream, rate, *, period=None, includePunctuations=None, precise=None, name=None):
@@ -112,7 +123,7 @@ class Throttle (streamsx.spl.op.Map):
             params['includePunctuations'] = includePunctuations
         if precise is not None:
             params['precise'] = precise
-        super(Throttle, self).__init__(kind,stream,params=params,name=name)
+        super(_Throttle, self).__init__(kind,stream,params=params,name=name)
 
 
 def union(inputs, schema, name=None):
@@ -138,14 +149,14 @@ def union(inputs, schema, name=None):
         Stream: Stream that is a union of `inputs`.
 
     """
-    _op = Union(inputs, schema, name=name)
+    _op = _Union(inputs, schema, name=name)
     return _op.stream
 
-class Union (streamsx.spl.op.Invoke):
+class _Union (streamsx.spl.op.Invoke):
     """Union structured streams with disparate schemas.
     """
 
-    def __init__(self, inputs, schema, *, name=None):
+    def __init__(self, inputs, schema, name=None):
         topology = inputs[0].topology
         kind="spl.utility::Union"
         schemas=schema
@@ -153,31 +164,32 @@ class Union (streamsx.spl.op.Invoke):
         super(Union, self).__init__(topology,kind,inputs,schemas,params,name)
 
 
-class DeDuplicate (streamsx.spl.op.Map):
-    """Deduplicate tuples on a stream.
+def deduplicate(stream, count=None, period=None, name=None):
+    """Deduplicate tuples within a number of tuples.
+
+    Args:
+        stream(Stream): Stream to be deduplicated.
+        count(int): Number of tuples
+        period(float): Time period to check for duplicates.
+        name: Name of resultant stream, defaults to a generated name.
+
+    Returns:
+        Stream: Deduplicated stream.
     """
+    if count and period:
+        raise ValueError("Cannot set count and period")
 
-    @staticmethod
-    def within_count(stream, count, name=None):
-        """Deduplicate tuples within a number of tuples.
-        """
-        _op = DeDuplicate(stream, count=count, name=name)
-        return _op.stream
+    _op = _DeDuplicate(stream, count=count, period=period, name=name)
+    return _op.stream
 
-    @staticmethod
-    def within_period(stream, period, name=None):
-        """Deduplicate tuples within time period.
-        """
-        _op = DeDuplicate(stream, timeOut=period, name=name)
-        return _op.stream
-
+class _DeDuplicate (streamsx.spl.op.Map):
     def __init__(self, stream, *, timeOut=None, count=None, deltaAttribute=None, delta=None, key=None, resetOnDuplicate=None, flushOnPunctuation=None, name=None):
         kind="spl.utility::DeDuplicate"
         params = dict()
         if timeOut is not None:
             params['timeOut'] = float64(timeOut)
         if count is not None:
-            params['count'] = count
+            params['count'] = int(count)
         if deltaAttribute is not None:
             params['deltaAttribute'] = deltaAttribute
         if delta is not None:
