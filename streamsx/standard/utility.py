@@ -13,23 +13,20 @@ SEQUENCE_SCHEMA = StreamSchema('tuple<uint64 seq, timestamp ts>')
 """
 
 def sequence(topology, period=None, iterations=None, delay=None, name=None):
-    """Create a sequenced stream.
+    """Create a sequence stream.
 
     Creates a structured stream with schema :py:const:`SEQUENCE_SCHEMA` with
-    the `seq` attribute starting at zero and monotonically increasing and
-    `ts` attribute set to the time the tuple was generated.
+    the ``seq`` attribute starting at zero and monotonically increasing and
+    ``ts`` attribute set to the time the tuple was generated.
 
     Args:
-        period(float): Period of tuple generation in seconds, if `None` then tuples
-        are generated as fast as possible.
-        iterations(int): Number of tuples on the stream, if `None` then the stream
-            is infinite.
-        delay(float): Delay in seconds before the first tuple is submitted, if `None` then the
-        tuples are submitted as soon as possible.
+        period(float): Period of tuple generation in seconds, if `None` then tuples are generated as fast as possible.
+        iterations(int): Number of tuples on the stream, if `None` then the stream is infinite.
+        delay(float): Delay in seconds before the first tuple is submitted, if `None` then the tuples are submitted as soon as possible.
         name(str): Name of the stream, if `None` a generated name is used.
 
     Returns:
-        Stream: Structured stream containing an ever increasing `seq` attribute.
+        Stream: Structured stream containing an ever increasing ``seq`` attribute.
     """
     if iterations is not None:
         iterations = int(iterations)
@@ -65,27 +62,26 @@ class _Beacon(streamsx.spl.op.Source):
 
 
 def spray(stream, count, queue=1000, name=None):
-    """Spray tuples to the output ports.
+    """Spray tuples to a number of streams.
     Each tuple on `stream` is sent to one (and only one)
-    of the output streams returned by this method.
-    The output port for a specific tuple is not defined,
-    instead each output stream has a dedicated thread and the
+    of the returned streams.
+    The stream for a specific tuple is not defined,
+    instead each stream has a dedicated thread and the
     first available thread will take the tuple and
-    submit it to its output.
+    submit it.
 
-    Each input tuple is placed on internal queue before it
+    Each tuple on `stream` is placed on internal queue before it
     is submitted to an output stream. If the queue fills up
     then processing of the input stream is blocked until there
     is space in the queue.
 
     Args:
-        count(int): Number of output streams the input stream
-        will be sprayed across.
+        count(int): Number of output streams the input stream will be sprayed across.
         queue(int): Maximum queue size.
         name(str): Name of the stream, if `None` a generated name is used.
 
     Returns:
-        list(Stream) : List of output streams
+        list(Stream) : List of output streams.
     """
     _op = _ThreadedSplit(stream, count, queue,name=name)
     return _op.outputs
@@ -104,7 +100,10 @@ class _ThreadedSplit (streamsx.spl.op.Invoke):
 
 def throttle(stream, rate, precise=False, name=None):
     """Throttle the rate of a stream.
+
     Args:
+         rate(float): Throttled rate of the returned stream in tuples/second.
+         precise(bool): Try to make the rate precise at the cost of increased overhead.
          name(str): Name of the stream, if `None` a generated name is used.
     """
     _op = _Throttle(stream, rate, precise=precise, name=name)
@@ -140,9 +139,9 @@ def union(inputs, schema, name=None):
     the output schemas and the input schemas may contain additional
     attributes which will be discarded.
 
-    Args
-        inputs: Streams to be unioned.
-        schema: Schema of output stream
+    Args:
+        inputs(list[Stream]): Streams to be unioned.
+        schema(StreamSchema): Schema of output stream
         name(str): Name of the stream, if `None` a generated name is used.
 
     Returns:
@@ -165,13 +164,19 @@ class _Union (streamsx.spl.op.Invoke):
 
 
 def deduplicate(stream, count=None, period=None, name=None):
-    """Deduplicate tuples within a number of tuples.
+    """Deduplicate tuples on a stream.
+
+    If a tuple on `stream` is followed by a duplicate tuple
+    within `count` tuples or `period` number of seconds
+    then the duplicate is discarded from the returned stream.
+
+    Only one of `count` or `period` can be set.
 
     Args:
         stream(Stream): Stream to be deduplicated.
-        count(int): Number of tuples
+        count(int): Number of tuples.
         period(float): Time period to check for duplicates.
-        name: Name of resultant stream, defaults to a generated name.
+        name(str): Name of resultant stream, defaults to a generated name.
 
     Returns:
         Stream: Deduplicated stream.
