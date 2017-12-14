@@ -1,6 +1,9 @@
 # coding=utf-8
 # Licensed Materials - Property of IBM
 # Copyright IBM Corp. 2017
+"""
+Standard utilities for processing streams.
+"""
 
 import streamsx.spl.op
 from streamsx.topology.schema import StreamSchema

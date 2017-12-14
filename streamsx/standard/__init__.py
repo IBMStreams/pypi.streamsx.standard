@@ -6,7 +6,16 @@
 Overview
 ########
 
-Something something.
+Integration of the SPL Standard for Python applications.
+
+Provides methods to invoke standard streams operations in
+a ``Topology``.
+
+Functionality is grouped into a number of modules:
+
+* :py:mod:`streamsx.standard.files` - Reading and writing of files.
+* :py:mod:`streamsx.standard.utility` - Standard utilities for processing streams.
+
 """
 
 import enum

@@ -1,6 +1,9 @@
 # coding=utf-8
 # Licensed Materials - Property of IBM
 # Copyright IBM Corp. 2017
+"""
+Reading and writing of files.
+"""
 
 import enum
 import streamsx.spl.op
