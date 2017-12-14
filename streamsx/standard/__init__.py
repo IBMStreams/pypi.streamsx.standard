@@ -2,6 +2,13 @@
 # Licensed Materials - Property of IBM
 # Copyright IBM Corp. 2017
 
+"""
+Overview
+########
+
+Something something.
+"""
+
 import enum
 
 __all__ = ['Format', 'Compression']
