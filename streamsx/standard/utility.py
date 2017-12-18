@@ -48,7 +48,7 @@ def sequence(topology, period=None, iterations=None, delay=None, name=None):
     return _op.stream
 
 class _Beacon(streamsx.spl.op.Source):
-    def __init__(self, topology, schema, *, period=None, iterations=None, delay=None, triggerCount=None, name=None):
+    def __init__(self, topology, schema, period=None, iterations=None, delay=None, triggerCount=None, name=None):
         kind="spl.utility::Beacon"
         inputs=None
         schemas=schema
@@ -115,7 +115,7 @@ def throttle(stream, rate, precise=False, name=None):
 class _Throttle (streamsx.spl.op.Map):
     """Stream throttle capability
     """
-    def __init__(self, stream, rate, *, period=None, includePunctuations=None, precise=None, name=None):
+    def __init__(self, stream, rate, period=None, includePunctuations=None, precise=None, name=None):
         kind="spl.utility::Throttle"
         params = dict()
         params['rate'] = float64(rate)
@@ -163,7 +163,7 @@ class _Union (streamsx.spl.op.Invoke):
         kind="spl.utility::Union"
         schemas=schema
         params = None
-        super(Union, self).__init__(topology,kind,inputs,schemas,params,name)
+        super(_Union, self).__init__(topology,kind,inputs,schemas,params,name)
 
 
 def deduplicate(stream, count=None, period=None, name=None):
@@ -191,7 +191,7 @@ def deduplicate(stream, count=None, period=None, name=None):
     return _op.stream
 
 class _DeDuplicate (streamsx.spl.op.Map):
-    def __init__(self, stream, *, timeOut=None, count=None, deltaAttribute=None, delta=None, key=None, resetOnDuplicate=None, flushOnPunctuation=None, name=None):
+    def __init__(self, stream, timeOut=None, count=None, deltaAttribute=None, delta=None, key=None, resetOnDuplicate=None, flushOnPunctuation=None, name=None):
         kind="spl.utility::DeDuplicate"
         params = dict()
         if timeOut is not None:
@@ -208,5 +208,142 @@ class _DeDuplicate (streamsx.spl.op.Map):
             params['resetOnDuplicate'] = resetOnDuplicate
         if flushOnPunctuation is not None:
             params['flushOnPunctuation'] = flushOnPunctuation
-        super(DeDuplicate, self).__init__(kind,stream,params=params,name=name)
+        super(_DeDuplicate, self).__init__(kind,stream,params=params,name=name)
+
+def delay(stream, delay, max_delayed=1000, name=None):
+    """Delay tuples on a stream.
+
+    If a tuple on `stream` is followed by a duplicate tuple
+    within `count` tuples or `period` number of seconds
+    then the duplicate is discarded from the returned stream.
+
+    Args:
+        stream(Stream): Stream to be delayed.
+        delay(float): Seconds to delay each tuple.
+        max_delayed(int): Number of items that can be delayed before upstream processing is blocked.
+        name(str): Name of resultant stream, defaults to a generated name.
+
+    Returns:
+        Stream: Delayed stream.
+    """
+    _op = _Delay(stream, delay, max_delayed, name)
+    return _op.stream
+
+class _Delay(streamsx.spl.op.Map):
+    def __init__(self, stream, delay, max_delayed=1000, name=None):
+        topology = stream.topology
+        kind="spl.utility::Delay"
+        params = dict()
+        params['delay'] = float64(delay)
+        if max_delayed is not None:
+            params['bufferSize'] = uint32(max_delayed)
+        super(_Delay, self).__init__(kind,stream,params=params,name=name)
+
+def pair(stream0, stream1, matching=None, name=None):
+    """Pair tuples across two streams.
+
+    This method is used to merge results from performing
+    parallel tasks on the same stream, for example peform multiple
+    model scoring on the same stream.
+
+    Holds tuples on the two input streams until a matched tuple has been
+    received by both input streams. Once matching tuples have received
+    the two tuples are submitted to the returned stream with the
+    tuple from ``stream0`` followed by the one from ``stream1``.
+
+    Tuples are matched according to the ``matching`` parameter which
+    is an attribute name from the input tuple schema,
+    typically representing the application key of the tuple.
+
+    If ``matching`` is ``None`` then a match occurs when
+    a tuple is received, so that tuples are emitted when a tuple
+    has been received by both input streams.
+    
+    ``stream0`` and ``stream1`` must have the same schema and the resultant
+    stream has the same schema.
+
+    These schemas are not supported when ``matching`` is specified.
+       * ``CommonSchema.Python``
+       * ``CommonSchema.Json``
+
+    This is equivalent to ``merge([stream0, stream1], matching, name)``.
+
+    Example of scoring in parallel.
+        
+        # Stream of customer information with customer identifier
+        # as the id attribute.
+        customers = ...
+        score_schema = schema.extend(StreamSchema('tuple<float64 score>'))
+    
+        # Score each tuple on customers in parallel
+        cust_churn = s.map(customer_churn_score, schema=score_schema)
+        cust_renew = s.map(customer_renew_score, schema=score_schema)
+        
+        # Pair back as single stream
+        # cust_churn_renew stream will contain two tuples for
+        # each customer, the churn score followed by the renew score.
+        cust_churn_renew = utility.pair(cust_churn, cust_renew,
+            matching='id');
+
+    Args:
+        stream0(Stream): First input stream.
+        stream1(Stream): Second input stream.
+        matching(str): Attribute name for matching tuples.
+        name(str): Name of resultant stream, defaults to a generated name.
+
+    Returns:
+        Stream: Paired stream.
+    """
+    return merge([stream0, stream1], matching, name)
+
+def merge(inputs, matching=None, name=None):
+    """Merge tuples across two (or more) streams.
+
+    This method is used to merge results from performing
+    parallel tasks on the same stream, for example peform multiple
+    model scoring on the same stream.
+
+    Holds tuples on the input streams until a matched tuple has been
+    received by each input stream. Once matching tuples have received
+    for all input streams the tuples are submitted to the returned
+    stream in order of the input ports.
+
+    Tuples are matched according to the ``matching`` parameter which
+    is an attribute name from the input tuple schema,
+    typically representing the application key of the tuple.
+
+    If ``matching`` is ``None`` then a match occurs when
+    a tuple is received, so that tuples are emitted when a tuple
+    has been received by each input port.
+    
+    All input streams must have the same schema and the resultant
+    stream has the same schema.
+
+    These schemas are not supported when ``matching`` is specified.
+       * ``CommonSchema.Python``
+       * ``CommonSchema.Json``
+
+    Args:
+        inputs(list[Stream]): Input streams to be matched.
+        matching(str): Attribute name for matching.
+        name(str): Name of resultant stream, defaults to a generated name.
+
+    Returns:
+        Stream: Merged stream.
+    """
+    _op = _Pair(inputs, matching, name=name)
+    return _op.outputs[0]
+
+class _Pair(streamsx.spl.op.Invoke):
+    def __init__(self, inputs, matching=None, buffer_size=None, name=None):
+        topology = inputs[0].topology
+        kind="spl.utility::Pair"
+        schema=inputs[0].oport.schema
+        params = dict()
+        if buffer_size is not None:
+            params['bufferSize'] = uint32(buffer_size)
+        super(_Pair, self).__init__(topology,kind,inputs,[schema],params,name)
+        if matching is not None:
+            for port_idx in range(len(inputs)):
+                self.params['partitionBy' + str(port_idx)] = self.attribute(inputs[port_idx], matching)
 
