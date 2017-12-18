@@ -263,12 +263,13 @@ def pair(stream0, stream1, matching=None, name=None):
     stream has the same schema.
 
     These schemas are not supported when ``matching`` is specified.
+
        * ``CommonSchema.Python``
        * ``CommonSchema.Json``
 
     This is equivalent to ``merge([stream0, stream1], matching, name)``.
 
-    Example of scoring in parallel.
+    Example of scoring in parallel::
         
         # Stream of customer information with customer identifier
         # as the id attribute.
@@ -320,6 +321,7 @@ def merge(inputs, matching=None, name=None):
     stream has the same schema.
 
     These schemas are not supported when ``matching`` is specified.
+
        * ``CommonSchema.Python``
        * ``CommonSchema.Json``
 
