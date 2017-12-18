@@ -6,15 +6,16 @@
 IBM Streams Standard toolkit
 ============================
 
-.. automodule:: streamsx.standard
+.. autosummary::
+   :toctree: generated
+
+   streamsx.standard.files
+   streamsx.standard.utility
 
 Contents:
 
 .. toctree::
    :maxdepth: 4
-
-   modules
-
 
 
 Indices and tables
