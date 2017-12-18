@@ -3,7 +3,7 @@ setup(
   name = 'streamsx.standard',
   packages = ['streamsx.standard'],
   include_package_data=True,
-  version = '0.2.0',
+  version = '0.2.1',
   description = 'IBM Streams standard toolkit',
   long_description = open('DESC.txt').read(),
   author = 'IBM Streams @ github.com',
@@ -12,7 +12,7 @@ setup(
   url = 'https://github.com/IBMStreams/streamsx.standard',
   keywords = ['streams', 'ibmstreams', 'streaming', 'analytics', 'streaming-analytics'],
   classifiers = [
-    'Development Status :: 1 - Planning',
+    'Development Status :: 3 - Alpha',
     'License :: OSI Approved :: Apache Software License',
     'Programming Language :: Python :: 2',
     'Programming Language :: Python :: 2.7',

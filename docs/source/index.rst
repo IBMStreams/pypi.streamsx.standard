@@ -1,22 +1,19 @@
-.. streamsx.standard documentation master file, created by
-   sphinx-quickstart on Wed Oct 25 09:44:46 2017.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+streamsx.standard package
+#########################
 
-IBM Streams Standard toolkit
-============================
+Overview
+========
+
+This package exposes functionality from the IBM Streams SPL
+Standard toolkit for Python topologies (using ``Topology``).
 
 .. autosummary::
+   :nosignatures: 
    :toctree: generated
 
+   streamsx.standard
    streamsx.standard.files
    streamsx.standard.utility
-
-Contents:
-
-.. toctree::
-   :maxdepth: 4
-
 
 Indices and tables
 ==================
