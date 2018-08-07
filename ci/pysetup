@@ -1,4 +1,4 @@
 echo 'PYTHONHOME' ${PYTHONHOME:?}
 export PATH=$PYTHONHOME/bin:$PATH
 ${PYTHONHOME}/bin/python -V
-${PYTHONHOME}/bin/python -m pip install nose coverage ../../streamsx
+${PYTHONHOME}/bin/python -m pip install nose coverage
