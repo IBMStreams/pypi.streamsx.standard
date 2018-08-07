@@ -9,6 +9,7 @@ pipeline {
        }
     }
     stage('Python 3.5 standalone') {
+       when { branch 'DISABLED' }
        steps {
          sh 'ci/test_python35_standalone.sh'
        }
