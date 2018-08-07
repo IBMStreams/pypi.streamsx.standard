@@ -37,7 +37,6 @@ class PairMatchedCheck(object):
         self.p0 = [18, 14, 16]
         self.p1 = [21, 24, 27]
     def __call__(self, t):
-        print("DDDD", t, flush=True)
         id_ = int(t['id'])
         if self.last is not None:
             if self.last != id_:
