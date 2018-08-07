@@ -24,14 +24,14 @@ pipeline {
   post {
     always {
       junit "nose_runs/**/TEST-*.xml"
-      publishHTML target: [
-          reportName: 'Coverage 27'
-          reportDir: 'nose_runs/py27/coverage'
-          reportFiles: 'index.html'
-          keepAll: false
-          alwaysLinkToLastBuild: true
+      publishHTML (target: [
+          reportName: 'Coverage 27',
+          reportDir: 'nose_runs/py27/coverage',
+          reportFiles: 'index.html',
+          keepAll: false,
+          alwaysLinkToLastBuild: true,
           allowMissing: true
-      ]
+      ])
     }
   }
 }
