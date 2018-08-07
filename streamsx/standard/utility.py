@@ -142,6 +142,10 @@ def union(inputs, schema, name=None):
     the output schemas and the input schemas may contain additional
     attributes which will be discarded.
 
+    .. note:: This method differs from ``Stream.union`` in that
+    the schemas of input and output streams can differ, while
+    ``Stream.union`` requires matching input and output schemas.
+
     Args:
         inputs(list[Stream]): Streams to be unioned.
         schema(StreamSchema): Schema of output stream
