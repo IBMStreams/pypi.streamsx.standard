@@ -33,6 +33,14 @@ pipeline {
           alwaysLinkToLastBuild: true,
           allowMissing: true
       ])
+      publishHTML (target: [
+          reportName: 'Coverage 36',
+          reportDir: 'nose_runs/py36/coverage',
+          reportFiles: 'index.html',
+          keepAll: false,
+          alwaysLinkToLastBuild: true,
+          allowMissing: true
+      ])
     }
   }
 }
