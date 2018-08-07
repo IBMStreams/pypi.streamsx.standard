@@ -1,4 +1,5 @@
 echo 'PYTHONHOME' ${PYTHONHOME:?}
 export PATH=$PYTHONHOME/bin:$PATH
 ${PYTHONHOME}/bin/python -V
+${PYTHONHOME}/bin/python -m pip install dill==0.2.7.1
 ${PYTHONHOME}/bin/python -m pip install nose coverage
