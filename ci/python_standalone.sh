@@ -12,4 +12,4 @@ xuf="nose_runs/TEST-PY${pyv}_${now}.xml"
 
 wd="nose_runs/py${pyv}"
 mkdir -p ${wd}
-nosetests --where=${wd} --xunit-file ${xuf} --config=nose.cfg ../../streamsx
+nosetests --where=${wd} --xunit-file ${xuf} --config=nose.cfg ../../streamsx/standard/tests
