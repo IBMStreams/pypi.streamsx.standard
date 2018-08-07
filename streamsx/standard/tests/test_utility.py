@@ -125,3 +125,22 @@ class TestUtility(TestCase):
         tester.tuple_count(r, 6)
         tester.tuple_check(r, PairMatchedCheck())
         tester.test(self.test_ctxtype, self.test_config)
+
+    def test_union(self):
+        topo = Topology()
+        s = U.sequence(topo, iterations=932)
+        A = U.SEQUENCE_SCHEMA.extend(StreamSchema('tuple<int32 a, int32 c>'))
+        B = U.SEQUENCE_SCHEMA.extend(StreamSchema('tuple<int32 c, int32 b>'))
+        F = U.SEQUENCE_SCHEMA.extend(StreamSchema('tuple<int32 c>'))
+        r0 = s.map(lambda t : (t['seq'], t['ts'], 89, t['seq']+19), schema=A)
+        r1 = s.map(lambda t : (t['seq'], t['ts'], t['seq']+5, 32), schema=B)
+
+        r = U.union([r0,r1], schema=F)
+
+        r19 = r.filter(lambda t : t['c'] == t['seq'] + 19)
+        r5 = r.filter(lambda t : t['c'] == t['seq'] + 5)
+        tester = Tester(topo)
+        tester.tuple_count(r, 932*2)
+        tester.tuple_count(r19, 932)
+        tester.tuple_count(r5, 932)
+        tester.test(self.test_ctxtype, self.test_config)

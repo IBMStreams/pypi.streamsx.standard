@@ -152,7 +152,7 @@ def union(inputs, schema, name=None):
 
     """
     _op = _Union(inputs, schema, name=name)
-    return _op.stream
+    return _op.outputs[0]
 
 class _Union (streamsx.spl.op.Invoke):
     """Union structured streams with disparate schemas.
