@@ -213,9 +213,14 @@ class _DeDuplicate (streamsx.spl.op.Map):
 def delay(stream, delay, max_delayed=1000, name=None):
     """Delay tuples on a stream.
 
-    If a tuple on `stream` is followed by a duplicate tuple
-    within `count` tuples or `period` number of seconds
-    then the duplicate is discarded from the returned stream.
+    Delays tuples on `stream` maintaining inter-arrival times
+    of tuples and punctuation.
+
+    Example delaying a stream ``ss`` by 0.5 seconds::
+
+        import streamsx.standard.utility as U
+
+        readings = U.delay(readings, delay=1.5)
 
     Args:
         stream(Stream): Stream to be delayed.
@@ -270,6 +275,8 @@ def pair(stream0, stream1, matching=None, name=None):
     This is equivalent to ``merge([stream0, stream1], matching, name)``.
 
     Example of scoring in parallel::
+
+        import streamsx.standard.utility as U
         
         # Stream of customer information with customer identifier
         # as the id attribute.
@@ -283,8 +290,7 @@ def pair(stream0, stream1, matching=None, name=None):
         # Pair back as single stream
         # cust_churn_renew stream will contain two tuples for
         # each customer, the churn score followed by the renew score.
-        cust_churn_renew = utility.pair(cust_churn, cust_renew,
-            matching='id');
+        cust_churn_renew = U.pair(cust_churn, cust_renew, matching='id');
 
     Args:
         stream0(Stream): First input stream.
