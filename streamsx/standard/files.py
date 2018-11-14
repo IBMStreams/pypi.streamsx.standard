@@ -11,7 +11,7 @@ from streamsx.topology.schema import StreamSchema
 from streamsx.standard import Format, Compression
 
 import streamsx.standard._version
-__version__ = _version.__version__
+__version__ = streamsx.standard._version.__version__
 
 
 def csv_reader(topology, schema, file, header=False, encoding=None, separator=None, ignoreExtraFields=False, hot=False, name=None):

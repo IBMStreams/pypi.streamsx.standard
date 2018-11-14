@@ -10,7 +10,7 @@ from streamsx.topology.schema import StreamSchema
 from streamsx.spl.types import float64, uint32, uint64
 
 import streamsx.standard._version
-__version__ = _version.__version__
+__version__ = streamsx.standard._version.__version__
 
 SEQUENCE_SCHEMA = StreamSchema('tuple<uint64 seq, timestamp ts>')
 """Structured schema containing a sequence identifier and a timestamp.
