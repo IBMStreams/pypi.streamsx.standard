@@ -1,9 +1,10 @@
 from setuptools import setup
+import streamsx.standard._version
 setup(
   name = 'streamsx.standard',
   packages = ['streamsx.standard'],
   include_package_data=True,
-  version = '0.2.1',
+  version = streamsx.standard._version.__version__,
   description = 'IBM Streams standard toolkit',
   long_description = open('DESC.txt').read(),
   author = 'IBM Streams @ github.com',
@@ -19,7 +20,7 @@ setup(
     'Programming Language :: Python :: 3',
     'Programming Language :: Python :: 3.5',
   ],
-  install_requires=['streamsx'],
+  install_requires=['streamsx>=1.11.5a'],
   
   test_suite='nose.collector',
   tests_require=['nose']
