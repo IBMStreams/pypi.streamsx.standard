@@ -1,9 +1,10 @@
 from setuptools import setup
+import streamsx.standard._version
 setup(
   name = 'streamsx.standard',
   packages = ['streamsx.standard'],
   include_package_data=True,
-  version = '0.2.1',
+  version = streamsx.standard._version,
   description = 'IBM Streams standard toolkit',
   long_description = open('DESC.txt').read(),
   author = 'IBM Streams @ github.com',

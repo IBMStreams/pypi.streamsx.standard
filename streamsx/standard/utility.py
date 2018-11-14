@@ -1,6 +1,6 @@
 # coding=utf-8
 # Licensed Materials - Property of IBM
-# Copyright IBM Corp. 2017
+# Copyright IBM Corp. 2017,2018
 """
 Standard utilities for processing streams.
 """
@@ -8,6 +8,9 @@ Standard utilities for processing streams.
 import streamsx.spl.op
 from streamsx.topology.schema import StreamSchema
 from streamsx.spl.types import float64, uint32, uint64
+
+import streamsx.standard._version
+__version__ = _version.__version__
 
 SEQUENCE_SCHEMA = StreamSchema('tuple<uint64 seq, timestamp ts>')
 """Structured schema containing a sequence identifier and a timestamp.

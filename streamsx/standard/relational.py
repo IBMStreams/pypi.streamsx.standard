@@ -7,6 +7,9 @@ Stream transformations using relational predicates.
 
 from streamsx.spl.op import Invoke, Map
 
+import streamsx.standard._version
+__version__ = _version.__version__
+
 class Aggregate(Map):
     """Aggregation against a window of a structured schema stream.
 
