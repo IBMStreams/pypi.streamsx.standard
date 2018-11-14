@@ -28,8 +28,6 @@ class TestAggregate(TestCase):
 
         r = a.stream
 
-        r.print()
-
         tester = Tester(topo)
         # Mimic the aggregate processing
         expected = []
