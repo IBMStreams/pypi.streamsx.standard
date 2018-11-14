@@ -56,6 +56,16 @@ class PairMatchedCheck(object):
 
         return False
             
+class _Delta(object):
+    def __init__(self):
+        self._last = None
+    def __call__(self, v):
+        if v['seq'] == 0:
+            self._last = v['ts']
+            return None
+        else:
+            v['d'] = v['ts'].time() - self._last.time()
+            return v
 
 class TestUtility(TestCase):
     def setUp(self):
@@ -70,6 +80,16 @@ class TestUtility(TestCase):
         tester.tuple_count(s, 122)
         tester.test(self.test_ctxtype, self.test_config)
 
+    def test_sequence_period(self):
+        topo = Topology()
+        s = U.sequence(topo, iterations=67, period=0.1)
+        E = U.SEQUENCE_SCHEMA.extend(StreamSchema('tuple<float64 d>'))
+
+        s = s.map(_Delta(), schema=E)
+        tester = Tester(topo)
+        tester.tuple_check(s, lambda x: x['d'] > 0.08)
+        tester.tuple_count(s, 67-1)
+        tester.test(self.test_ctxtype, self.test_config)
 
     def test_spray(self):
         topo = Topology()
