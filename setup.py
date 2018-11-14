@@ -4,7 +4,7 @@ setup(
   name = 'streamsx.standard',
   packages = ['streamsx.standard'],
   include_package_data=True,
-  version = streamsx.standard._version,
+  version = streamsx.standard._version.__version__,
   description = 'IBM Streams standard toolkit',
   long_description = open('DESC.txt').read(),
   author = 'IBM Streams @ github.com',
