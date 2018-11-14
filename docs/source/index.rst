@@ -21,6 +21,7 @@ running on IBM Cloud see:
 
    streamsx.standard
    streamsx.standard.files
+   streamsx.standard.relational
    streamsx.standard.utility
 
 Indices and tables

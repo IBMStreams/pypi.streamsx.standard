@@ -2,7 +2,7 @@ import sys
 from nose.plugins.attrib import attr
 from unittest import TestCase
 
-import streamsx.standard._relational as R
+import streamsx.standard.relational as R
 import streamsx.standard.utility as U
 
 from streamsx.topology.topology import Topology
