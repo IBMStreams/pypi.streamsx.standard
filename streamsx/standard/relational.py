@@ -29,7 +29,7 @@ class Aggregate(Map):
     the maximum, minimum and average reading over the last ten minutes
     updating every minute and grouped by sensor::
 
-        from streamsx.standard.utility import Aggregate
+        from streamsx.standard.relational import Aggregate
 
         # Declare the window
         win = readings.last(datetime.timedelta(minutes=10)).trigger(datetime.timedelta(minutes=1))
