@@ -362,3 +362,42 @@ class _Pair(streamsx.spl.op.Invoke):
             for port_idx in range(len(inputs)):
                 self.params['partitionBy' + str(port_idx)] = self.attribute(inputs[port_idx], matching)
 
+def gate(stream, control, max_unacked=1, ack_count=1, name=None):
+    """Gate tuple flow based upon downstream processing.
+
+    Tuples on `stream` are passed through unmodified to the returned
+    stream but the flow is gated by tuples on the `control` stream.
+
+    Up to `max_unacked` tuples flow through the gate before `stream` is
+    is blocked. Each tuple arriving on `control` acknowledges `ack_count`
+    tuples and thus unblocks `stream` until the number of unacknowledged
+    tuples reaches `max_unacked` again.
+
+    The output of some downstream processing is typically used as `control`
+    and thus `control` is usually a stream obtained from a `streamsx.topology.topology.PendingStream`.
+
+    Args:
+        stream(Stream): Stream to be gated.
+        control(Stream): Controlling stream.
+        max_unacked(int): Maximum of tuples allowed through the gate without acknowledgement.
+        ack_count(int): Count of tuples to acknowledge with each tuple arriving on `control`.
+        name(str): Name of resultant stream, defaults to a generated name.
+    
+    Returns:
+        Stream: Gated stream.
+    """
+    ack_count = uint32(ack_count)
+    _op = _Gate([stream,control], maxUnackedTupleCount=max_unacked, numTuplesToAck=ack_count,name=name)
+    return _op.outputs[0]
+
+class _Gate(streamsx.spl.op.Invoke):
+    def __init__(self, inputs, maxUnackedTupleCount, numTuplesToAck=None, name=None):
+        topology = inputs[0].topology
+        kind="spl.utility::Gate"
+        schema=inputs[0].oport.schema
+        params = dict()
+        if maxUnackedTupleCount is not None:
+            params['maxUnackedTupleCount'] = uint32(maxUnackedTupleCount)
+        if numTuplesToAck is not None:
+            params['numTuplesToAck'] = numTuplesToAck
+        super(_Gate, self).__init__(topology,kind,inputs,[schema],params,name)

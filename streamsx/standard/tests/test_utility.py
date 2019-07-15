@@ -4,7 +4,7 @@ import time
 
 import streamsx.standard.utility as U
 
-from streamsx.topology.topology import Topology
+from streamsx.topology.topology import Topology, PendingStream
 from streamsx.topology.tester import Tester
 from streamsx.topology.schema import StreamSchema
 
@@ -66,6 +66,27 @@ class _Delta(object):
         else:
             v['d'] = v['ts'].time() - self._last.time()
             return v
+
+class GateCheck(object):
+    def __init__(self, N, D):
+        self.N = N
+        self.D = D * 0.8
+        self.c = 0
+        self.last = 0
+    def __call__(self, t):
+        if self.c == 0:
+            if self.last:
+                ok = (t - self.last) >= self.D
+            else:
+                ok = True
+            self.last = t
+        else:
+            ok = (t - self.last) < self.D
+        self.c += 1
+        if self.c == self.N:
+            self.c = 0
+            self.last = t
+        return ok
 
 class TestUtility(TestCase):
     def setUp(self):
@@ -163,4 +184,20 @@ class TestUtility(TestCase):
         tester.tuple_count(r, 932*2)
         tester.tuple_count(r19, 932)
         tester.tuple_count(r5, 932)
+        tester.test(self.test_ctxtype, self.test_config)
+
+    def test_gate(self):
+        N=137
+        D=0.75
+        G=17
+        topo = Topology()
+        s = topo.source(range(N))
+        c = PendingStream(topo)
+        g = U.gate(s, c.stream, max_unacked=G)
+        g = g.map(lambda _ : time.time())
+        r = U.delay(g, delay=D)
+        c.complete(r)
+        tester = Tester(topo)
+        tester.tuple_count(r, N)
+        tester.tuple_check(r, GateCheck(G,D))
         tester.test(self.test_ctxtype, self.test_config)
