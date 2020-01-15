@@ -8,6 +8,7 @@ Standard utilities for processing streams.
 import streamsx.spl.op
 from streamsx.topology.schema import StreamSchema
 from streamsx.spl.types import float64, uint32, uint64
+import streamsx.topology.composite
 
 import streamsx.standard._version
 __version__ = streamsx.standard._version.__version__
@@ -18,7 +19,35 @@ SEQUENCE_SCHEMA = StreamSchema('tuple<uint64 seq, timestamp ts>')
 ``'tuple<uint64 seq, timestamp ts>'``
 """
 
-def sequence(topology, period=None, iterations=None, delay=None, name=None):
+class Sequence(streamsx.topology.composite.Source):
+    """A sequence source.
+
+    Creates a structured stream with schema :py:const:`SEQUENCE_SCHEMA` with
+    the ``seq`` attribute starting at zero and monotonically increasing and
+    ``ts`` attribute set to the time the tuple was generated.
+
+    Args:
+        period(float): Period of tuple generation in seconds, if `None` then tuples are generated as fast as possible.
+        iterations(int): Number of tuples on the stream, if `None` then the stream is infinite.
+        delay(float): Delay in seconds before the first tuple is submitted, if `None` then the tuples are submitted as soon as possible.
+
+    Example, create a infinite sequence stream of twenty tuples per second::
+
+        from streamsx.topology.topology import Topology
+        import streamsx.standard.utility as U
+
+        seq = topo(U.Sequence(period=0.5), name='20Hz')
+
+    """
+    def __init__(self, period:float=None, iterations:int=None, delay:float=None):
+        self.period = period
+        self.iterations = iterations
+        self.delay = delay
+
+    def populate(self, topology, name, **options):
+        return _sequence(topology, self.period, self.iterations, self.delay, name)
+
+def _sequence(topology, period=None, iterations=None, delay=None, name=None):
     """Create a sequence stream.
 
     Creates a structured stream with schema :py:const:`SEQUENCE_SCHEMA` with
@@ -103,17 +132,27 @@ class _ThreadedSplit (streamsx.spl.op.Invoke):
         params['bufferSize'] = uint32(queue)
         super(_ThreadedSplit, self).__init__(topology,kind,inputs,schemas,params,name)
 
-
-def throttle(stream, rate, precise=False, name=None):
+class Throttle(streamsx.topology.composite.Map):
     """Throttle the rate of a stream.
 
     Args:
          rate(float): Throttled rate of the returned stream in tuples/second.
          precise(bool): Try to make the rate precise at the cost of increased overhead.
-         name(str): Name of the stream, if `None` a generated name is used.
+
+    Example throttling a stream ``readings`` to around 10,000 tuples per second.
+
+        import streamsx.standard.utility as U
+
+        readings = readings.map(U.Throttle(rate=10000.0))
     """
-    _op = _Throttle(stream, rate, precise=precise, name=name)
-    return _op.stream
+    def __init__(self, rate:float, precise:bool=False):
+        self.rate = rate
+        self.precise = precise
+
+    def populate(self, topology, stream, schema, name, **options):
+        _op = _Throttle(stream, self.rate, self.precise, name=name)
+        return _op.stream
+
 
 class _Throttle (streamsx.spl.op.Map):
     """Stream throttle capability
@@ -173,7 +212,7 @@ class _Union (streamsx.spl.op.Invoke):
         super(_Union, self).__init__(topology,kind,inputs,schemas,params,name)
 
 
-def deduplicate(stream, count=None, period=None, name=None):
+class Deduplicate(streamsx.topology.composite.Map):
     """Deduplicate tuples on a stream.
 
     If a tuple on `stream` is followed by a duplicate tuple
@@ -183,18 +222,21 @@ def deduplicate(stream, count=None, period=None, name=None):
     Only one of `count` or `period` can be set.
 
     Args:
-        stream(Stream): Stream to be deduplicated.
         count(int): Number of tuples.
         period(float): Time period to check for duplicates.
-        name(str): Name of resultant stream, defaults to a generated name.
-
-    Returns:
-        Stream: Deduplicated stream.
     """
+    def __init__(self, count:int=None, period:float=None):
+        self.count = count
+        self.period = period
+
+    def populate(self, topology, stream, schema, name, **options):
+        return _deduplicate(stream, self.count, self.period, name)
+
+def _deduplicate(stream, count=None, period=None, name=None):
     if count and period:
         raise ValueError("Cannot set count and period")
 
-    _op = _DeDuplicate(stream, count=count, period=period, name=name)
+    _op = _DeDuplicate(stream, count=count, timeOut=period, name=name)
     return _op.stream
 
 class _DeDuplicate (streamsx.spl.op.Map):
@@ -204,7 +246,7 @@ class _DeDuplicate (streamsx.spl.op.Map):
         if timeOut is not None:
             params['timeOut'] = float64(timeOut)
         if count is not None:
-            params['count'] = int(count)
+            params['count'] = uint64(int(count))
         if deltaAttribute is not None:
             params['deltaAttribute'] = deltaAttribute
         if delta is not None:
@@ -217,27 +259,30 @@ class _DeDuplicate (streamsx.spl.op.Map):
             params['flushOnPunctuation'] = flushOnPunctuation
         super(_DeDuplicate, self).__init__(kind,stream,params=params,name=name)
 
-def delay(stream, delay, max_delayed=1000, name=None):
+class Delay(streamsx.topology.composite.Map):
     """Delay tuples on a stream.
 
     Delays tuples on `stream` maintaining inter-arrival times
     of tuples and punctuation.
 
-    Example delaying a stream ``ss`` by 0.5 seconds::
+    Args:
+        delay(float): Seconds to delay each tuple.
+        max_delayed(int): Number of items that can be delayed before upstream processing is blocked.
+
+    Example delaying a stream ``readings`` by 1.5 seconds::
 
         import streamsx.standard.utility as U
 
-        readings = U.delay(readings, delay=1.5)
-
-    Args:
-        stream(Stream): Stream to be delayed.
-        delay(float): Seconds to delay each tuple.
-        max_delayed(int): Number of items that can be delayed before upstream processing is blocked.
-        name(str): Name of resultant stream, defaults to a generated name.
-
-    Returns:
-        Stream: Delayed stream.
+        readings = readings.map(U.Delay(delay=1.5))
     """
+    def __init__(self, delay:float, max_delayed:int=1000):
+        self.delay=delay
+        self.max_delayed=max_delayed
+
+    def populate(self, topology, stream, schema, name, **options):
+        return _delay(stream, self.delay, self.max_delayed, name)
+
+def _delay(stream, delay, max_delayed=1000, name=None):
     _op = _Delay(stream, delay, max_delayed, name)
     return _op.stream
 

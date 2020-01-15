@@ -15,12 +15,11 @@ setup(
   classifiers = [
     'Development Status :: 3 - Alpha',
     'License :: OSI Approved :: Apache Software License',
-    'Programming Language :: Python :: 2',
-    'Programming Language :: Python :: 2.7',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.5',
+    'Programming Language :: Python :: 3.6',
+    'Programming Language :: Python :: 3.7',
   ],
-  install_requires=['streamsx>=1.11.5a'],
+  install_requires=['streamsx>=1.14.0a'],
   
   test_suite='nose.collector',
   tests_require=['nose']
