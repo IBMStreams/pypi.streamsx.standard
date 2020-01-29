@@ -5,6 +5,7 @@
 Reading and writing of files.
 """
 
+import os
 import enum
 import streamsx.spl.op
 from streamsx.topology.schema import StreamSchema
@@ -340,9 +341,31 @@ def csv_reader(topology, schema, file, header=False, encoding=None, separator=No
     The file defined by `file` is read and mapped to a stream
     with a structured schema of `schema`.
 
+    Example for reading a file from application directory (file is part of application bundle)::
+
+        import streamsx.standard.files as files
+        from streamsx.topology.topology import Topology
+
+        topo = Topology()
+        sample_file = '/tmp/local/data.csv' # local file
+        topo.add_file_dependency(sample_file, 'etc') # add sample file to etc dir in bundle
+        fn = os.path.join('etc', 'data.csv') # file name relative to application dir
+        sch = 'tuple<rstring a, int32 b>'
+        r = files.csv_reader(topo, schema=sch, file=fn)
+
+    Example for reading a file from file system accessible from the running job, for example persistent volume claim (Cloud Pak for Data)::
+
+        import streamsx.standard.files as files
+        from streamsx.topology.topology import Topology
+
+        topo = Topology()
+        sample_file = '/opt/ibm/streams-ext/data.csv' # file location accessible from running Streams application 
+        r = files.csv_reader(topo, schema='tuple<rstring a, int32 b>', file=sample_file)
+
     Args:
         topology(Topology): Topology to contain the returned stream.
         schema(StreamSchema): Schema of the returned stream.
+        file(str|Expression): Name of the source file. File name in relative path is expected in application directory, for example the file is added to the application bundle.
         header: Does the file contain a header.
         encoding: Specifies the character set encoding that is used in the output file.
         separator(str): Separator between records (defaults to comma ``,``).
@@ -356,6 +379,13 @@ def csv_reader(topology, schema, file, header=False, encoding=None, separator=No
         (Stream): Stream containing records from the file.
     """
     fe = streamsx.spl.op.Expression.expression(Format.csv.name)
+    if isinstance(file, streamsx.spl.op.Expression) is False:
+        if isinstance(file, str):
+            if os.path.isabs(file) is False:       
+                file = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/'+file+'"')
+                print("file="+str(file))
+        else:
+            raise TypeError(file)
     _op = _FileSource(topology, schema, file=file, format=fe, hotFile=hot,encoding=encoding,separator=separator,ignoreExtraCSVValues=ignoreExtraFields)
     return _op.outputs[0]
 

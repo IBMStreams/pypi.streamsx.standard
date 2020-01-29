@@ -7,6 +7,7 @@ from streamsx.standard import CloseMode, Format, WriteFailureAction
 from streamsx.topology.topology import Topology
 from streamsx.topology.tester import Tester
 import streamsx.topology.context
+from streamsx.topology.schema import CommonSchema, StreamSchema
 
 import os
 import tempfile
@@ -62,13 +63,6 @@ class TestCSV(TestCase):
         fsink.write_punctuations = False
         s.for_each(fsink)
 
-#        result = streamsx.topology.context.submit("TOOLKIT", topo.graph) # creates tk* directory
-#        print('(TOOLKIT):' + str(result))
-#        assert(result.return_code == 0)
-#        result = streamsx.topology.context.submit("BUNDLE", topo.graph)  # creates sab file
-#        print('(BUNDLE):' + str(result))
-#        assert(result.return_code == 0)
-
         tester = Tester(topo)
         tester.tuple_count(s, 13)
         tester.test(self.test_ctxtype, self.test_config)
@@ -82,4 +76,42 @@ class TestCSV(TestCase):
         tester = Tester(topo)
         tester.contents(r, expected)
         tester.test(self.test_ctxtype, self.test_config)
+
+
+    def test_read_file_from_application_dir(self):
+        topo = Topology()
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        sample_file = os.path.join(script_dir, 'data.csv')
+        topo.add_file_dependency(sample_file, 'etc') # add sample file to etc dir in bundle
+        fn = os.path.join('etc', 'data.csv') # file name relative to application dir
+        sch = 'tuple<rstring a, int32 b>'
+        #fn = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/'+fn+'"')
+        r = files.csv_reader(topo, schema=sch, file=fn)
+        r.print()
+
+        tester = Tester(topo)
+        tester.tuple_count(r, 3)
+        tester.test(self.test_ctxtype, self.test_config)
+
+#        result = streamsx.topology.context.submit("TOOLKIT", topo.graph) # creates tk* directory
+#        print('(TOOLKIT):' + str(result))
+#        assert(result.return_code == 0)
+#        result = streamsx.topology.context.submit("BUNDLE", topo.graph)  # creates sab file
+#        print('(BUNDLE):' + str(result))
+#        assert(result.return_code == 0)
+
+class TestParams(TestCase):
+
+    def test_filename_ok(self):
+        topo = Topology()
+        fn = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/a/b"')
+        files.csv_reader(topo, schema='tuple<rstring a, int32 b>', file=fn)
+        files.csv_reader(topo, schema=CommonSchema.String, file="/tmp/a")
+
+    def test_filename_bad(self):
+        topo = Topology()
+        fn = 1
+        self.assertRaises(TypeError, files.csv_reader, topo, 'tuple<rstring a>', fn) # expects str or Expression for file
+
+
 
