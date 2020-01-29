@@ -99,3 +99,6 @@ ENV/
 
 # mypy
 .mypy_cache/
+/.project
+/docs/source/generated/
+/nose_runs/
