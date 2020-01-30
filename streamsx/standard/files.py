@@ -20,6 +20,15 @@ class FileSink(streamsx.topology.composite.ForEach):
     """
     Write a stream to a file
 
+    Example for writing a stream to a file::
+
+        import streamsx.standard.files as files
+        from streamsx.topology.topology import Topology
+
+        topo = Topology()
+        s = topo.source(['Hello', 'World!']).as_string()
+        s.for_each(files.FileSink(file=os.path.join(tempfile.mkdtemp(), 'data.txt')))
+
     .. versionadded:: 0.5
 
     Attributes
@@ -274,65 +283,77 @@ The modifiers can be repeated in the string, and are all replaced with their val
 
     def populate(self, topology, stream, name, **options) -> streamsx.topology.topology.Sink:
 
-        _op = _FileSink(stream=stream, file=self.file, name=name)
-
         if self.append is not None:
             if self.append is True:
-                _op.params['append'] = _op.expression('true')
+                self.append = streamsx.spl.op.Expression.expression('true')
         if self.bytes_per_file is not None:
-            _op.params['bytesPerFile'] = streamsx.spl.types.int32(self.bytes_per_file)
+            self.bytes_per_file = streamsx.spl.types.int32(self.bytes_per_file)
         if self.close_mode is not None:
-            _op.params['closeMode'] = streamsx.spl.op.Expression.expression(self.close_mode)
+            self.close_mode = streamsx.spl.op.Expression.expression(self.close_mode)
         if self.compression is not None:
-            _op.params['compression'] = streamsx.spl.op.Expression.expression(self.compression)
-        if self.encoding is not None:
-            _op.params['encoding'] = self.encoding
-        if self.eol_marker is not None:
-            _op.params['eolMarker'] = self.eol_marker
+            self.compression = streamsx.spl.op.Expression.expression(self.compression)
         if self.flush is not None:
-            _op.params['flush'] = streamsx.spl.types.uint32(self.flush)
+            self.flush = streamsx.spl.types.uint32(self.flush)
         if self.flush_on_punctuation is not None:
             if self.flush_on_punctuation is True:
-                _op.params['flushOnPunctuation'] = _op.expression('true')
+                self.flush_on_punctuation = streamsx.spl.op.Expression.expression('true')
             else:
-                _op.params['flushOnPunctuation'] = _op.expression('false')
+                self.flush_on_punctuation = streamsx.spl.op.Expression.expression('false')
         if self.format is not None:
-            _op.params['format'] = streamsx.spl.op.Expression.expression(self.format)
+            self.format = streamsx.spl.op.Expression.expression(self.format)
         if self.has_delay_field is not None:
             if self.has_delay_field is True:
-                _op.params['hasDelayField'] = _op.expression('true')
+                self.has_delay_field = streamsx.spl.op.Expression.expression('true')
             else:
-                _op.params['hasDelayField'] = _op.expression('false')
-        if self.move_file_to_directory is not None:
-            _op.params['moveFileToDirectory'] = self.move_file_to_directory
+                self.has_delay_field = streamsx.spl.op.Expression.expression('false')
         if self.quote_strings is not None:
             if self.quote_strings is True:
-                _op.params['quoteStrings'] = _op.expression('true')
+                self.quote_strings = streamsx.spl.op.Expression.expression('true')
             else:
-                _op.params['quoteStrings'] = _op.expression('false')
-        if self.separator is not None:
-            _op.params['separator'] = self.separator
+                self.quote_strings = streamsx.spl.op.Expression.expression('false')
         if self.suppress is not None:
-            _op.params['suppress'] = streamsx.spl.op.Expression.expression(self.suppress)
+            self.suppress = streamsx.spl.op.Expression.expression(self.suppress)
         if self.time_per_file is not None:
-            _op.params['timePerFile'] = streamsx.spl.types.float64(self.time_per_file)
+            self.time_per_file = streamsx.spl.types.float64(self.time_per_file)
         if self.truncate_on_reset is not None:
             if self.truncate_on_reset is True:
-                _op.params['truncateOnReset'] = _op.expression('true')
+                self.truncate_on_reset = streamsx.spl.op.Expression.expression('true')
             else:
-                _op.params['truncateOnReset'] = _op.expression('false')
+                self.truncate_on_reset = streamsx.spl.op.Expression.expression('false')
         if self.tuples_per_file is not None:
-            _op.params['tuplesPerFile'] = streamsx.spl.types.int32(self.tuples_per_file)
+            self.tuples_per_file = streamsx.spl.types.int32(self.tuples_per_file)
         if self.write_failure_action is not None:
-            _op.params['writeFailureAction'] = streamsx.spl.op.Expression.expression(self.write_failure_action)
+            self.write_failure_action = streamsx.spl.op.Expression.expression(self.write_failure_action)
         if self.write_punctuations is not None:
             if self.write_punctuations is True:
-                _op.params['writePunctuations'] = _op.expression('true')
+                self.write_punctuations = streamsx.spl.op.Expression.expression('true')
             else:
-                _op.params['writePunctuations'] = _op.expression('false')
+                self.write_punctuations = streamsx.spl.op.Expression.expression('false')
+
+        _op = _FileSink(stream=stream, \
+                        file=self.file, \
+                        append=self.append, \
+                        bytesPerFile=self.bytes_per_file, \
+                        closeMode=self.close_mode, \
+                        compression=self.compression, \
+                        encoding=self.encoding, \
+                        eolMarker=self.eol_marker, \
+                        flush=self.flush, \
+                        flushOnPunctuation=self.flush_on_punctuation, \
+                        format=self.format, \
+                        hasDelayField=self.has_delay_field, \
+                        moveFileToDirectory=self.move_file_to_directory, \
+                        quoteStrings=self.quote_strings, \
+                        separator=self.separator, \
+                        suppress=self.suppress, \
+                        timePerFile=self.time_per_file, \
+                        truncateOnReset=self.truncate_on_reset, \
+                        tuplesPerFile=self.tuples_per_file, \
+                        writeFailureAction=self.write_failure_action, \
+                        writePunctuations=self.write_punctuations, \
+                        name=name)
 
         return streamsx.topology.topology.Sink(_op)
-
 
 
 def csv_reader(topology, schema, file, header=False, encoding=None, separator=None, ignoreExtraFields=False, hot=False, name=None):
@@ -389,11 +410,39 @@ def csv_reader(topology, schema, file, header=False, encoding=None, separator=No
     _op = _FileSource(topology, schema, file=file, format=fe, hotFile=hot,encoding=encoding,separator=separator,ignoreExtraCSVValues=ignoreExtraFields)
     return _op.outputs[0]
 
+
 def csv_writer(stream, file, append=None, encoding=None, separator=None, flush=None, name=None):
     """Write a stream as a comma separated value file.
+
+    The file defined by `file` is used as output file.
+
+    Example for writing lines to a file::
+
+        import streamsx.standard.files as files
+        from streamsx.topology.topology import Topology
+
+        topo = Topology()
+        s = topo.source(range(13))
+        sch = 'tuple<rstring a, int32 b>'
+        s = s.map(lambda v: ('A'+str(v), v+7), schema=sch)
+        files.csv_writer(s, file=os.path.join(tempfile.mkdtemp(), 'data.csv'))
+
+    Args:
+        topology(Topology): Topology to contain the returned stream.
+        file(str|Expression): Name of the output file. File name in relative path is relative to data directory.
+        append(bool): Specifies that the generated tuples are appended to the output file. If this parameter is false or not specified, the output file is truncated before the tuples are generated.
+        encoding: Specifies the character set encoding that is used in the output file.
+        separator(str): Separator between records (defaults to comma ``,``).
+        flush(int): Specifies the number of tuples after which to flush the output file. By default no flushing on tuple numbers is performed. 
+        name(str): Name of the stream, defaults to a generated name.
+
+    Return:
+        (streamsx.spl.op.Invoke): Sink operator
+
     """
     fe = streamsx.spl.op.Expression.expression(Format.csv.name)
     _op = _FileSink(stream, file, format=fe, append=append, encoding=encoding, separator=separator, flush=flush, name=name)
+
 
 class _DirectoryScan(streamsx.spl.op.Source):
     def __init__(self, topology, schema,directory, pattern=None, sleepTime=None, initDelay=None, sortBy=None, order=None, moveToDirectory=None, ignoreDotFiles=None, ignoreExistingFilesAtStartup=None, name=None):
@@ -464,10 +513,7 @@ class _FileSource(streamsx.spl.op.Invoke):
         if ignoreExtraCSVValues is not None:
             params['ignoreExtraCSVValues'] = ignoreExtraCSVValues
         super(_FileSource, self).__init__(topology,kind,inputs,schemas,params,name)
-
-
-
-    
+   
 
 class _FileSink(streamsx.spl.op.Invoke):
     def __init__(self, stream, file, schema=None, format=None, flush=None, flushOnPunctuation=None, eolMarker=None, writePunctuations=None, hasDelayField=None, compression=None, separator=None, encoding=None, quoteStrings=None, closeMode=None, tuplesPerFile=None, timePerFile=None, bytesPerFile=None, moveFileToDirectory=None, append=None, writeFailureAction=None, suppress=None, truncateOnReset=None, writeStateHandlerCallbacks=None, name=None):
