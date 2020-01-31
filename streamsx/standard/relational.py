@@ -313,9 +313,44 @@ class _Filter(Invoke):
         super(Filter, self).__init__(topology,kind,inputs,schemas,params,name)
 
 
-class _Functor(Invoke):
+class Functor(Invoke):
+    """Transform input tuples into output ones, and optionally filter them.
+
+    If you do not filter an input tuple, any incoming tuple results in a tuple on each output stream
+
+    The schema transformation is implemented using the ``spl.relational::Functor``
+    SPL primitive operator from the SPL Standard toolkit.
+
+    Example with schema transformation and two output streams::
+
+        topo = Topology()
+        s = U.sequence(topo, iterations=10) # schema is 'tuple<uint64 seq, timestamp ts>'
+        fo = R.Functor.map(s, [StreamSchema('tuple<uint64 seq>'),StreamSchema('tuple<timestamp ts>')])
+        seq_stream = fo.outputs[0] # schema is 'tuple<uint64 seq>' only
+        ts_stream = fo.outputs[1] # schema is 'tuple<timestamp ts>' only
+
+    Example with filter some tuples::
+
+        topo = Topology()
+        s = U.sequence(topo, iterations=5)
+        fo = R.Functor.map(s, StreamSchema('tuple<uint64 seq>'), filter='seq>=2ul')
+        fstream = fo.outputs[0]
+        fstream.print()
+
+    """
     @staticmethod
     def map(stream, schema, filter=None, name=None):
+        """Map input stream schema to one or more output schemas
+
+        Args:
+            stream: Input stream
+            schema(str,StreamSchema): Schema of output stream.
+            filter(str): Attribute name to group aggregations.
+            name(str): Invocation name, defaults to a generated name.
+
+        Returns:
+             Functor: Functor invocation.
+        """
         _op = Functor(stream, schema, name=name)
         if filter is not None:
             _op.params['filter'] = _op.expression(filter);

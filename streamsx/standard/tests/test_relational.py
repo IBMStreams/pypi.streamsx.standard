@@ -4,9 +4,10 @@ from unittest import TestCase
 
 import streamsx.standard.relational as R
 import streamsx.standard.utility as U
-
+from streamsx.topology.schema import StreamSchema
 from streamsx.topology.topology import Topology
 from streamsx.topology.tester import Tester
+import streamsx.topology.context
 
 ARSCHEMA='tuple<int32 acount, int32 acount_all, uint64 amax>'
 
@@ -37,4 +38,62 @@ class TestAggregate(TestCase):
         tester.tuple_count(r, 12)
         tester.test(self.test_ctxtype, self.test_config)
 
+class TestFunctor(TestCase):
+    def setUp(self):
+        Tester.setup_standalone(self)
+     
+    def test_transform_two_outputs(self):
+        topo = Topology()
+        s = U.sequence(topo, iterations=10)
+        fo = R.Functor.map(s, [StreamSchema('tuple<uint64 seq>'),StreamSchema('tuple<timestamp ts>')])
+        seq = fo.outputs[0]
+        ts = fo.outputs[1]
+        seq.print()
+        ts.print()
+
+        tester = Tester(topo)
+        tester.tuple_count(seq, 10)
+        tester.tuple_count(ts, 10)
+        tester.test(self.test_ctxtype, self.test_config)
+
+     
+    def test_transform_filter(self):
+        topo = Topology()
+        s = U.sequence(topo, iterations=5)
+        fo = R.Functor.map(s, StreamSchema('tuple<uint64 seq>'), filter='seq>=2ul')
+        r = fo.outputs[0]
+        r.print()
+
+        tester = Tester(topo)
+        tester.tuple_count(r, 3)
+        tester.test(self.test_ctxtype, self.test_config)
+
+    def test_transform_schema(self):
+        topo = Topology()
+        s = U.sequence(topo, iterations=10)
+        A = U.SEQUENCE_SCHEMA.extend(StreamSchema('tuple<rstring a>'))
+        fo = R.Functor.map(s, A)     
+        fo.a = fo.output(fo.outputs[0], '"string value"')
+        r = fo.outputs[0]
+        r.print()
+
+        tester = Tester(topo)
+        tester.tuple_count(r, 10)
+        tester.test(self.test_ctxtype, self.test_config)
+
+    def test_transform_schema_two_outputs(self):
+        topo = Topology()
+        s = U.sequence(topo, iterations=2)
+        fo = R.Functor.map(s, [StreamSchema('tuple<uint64 seq, rstring a>'),StreamSchema('tuple<timestamp ts, int32 b>')])
+        fo.a = fo.output(fo.outputs[0], '"string value"')
+        fo.b = fo.output(fo.outputs[1], 99)
+        a = fo.outputs[0]
+        b = fo.outputs[1]
+        a.print()
+        b.print()
+
+        tester = Tester(topo)
+        tester.tuple_count(a, 2)
+        tester.tuple_count(b, 2)
+        tester.test(self.test_ctxtype, self.test_config)
 
