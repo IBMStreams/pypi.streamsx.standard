@@ -35,10 +35,12 @@ class FileSink(streamsx.topology.composite.ForEach):
     ----------
     file : str
         Name of the output file.
+    options : dict
+        The additional optional parameters as variable keyword arguments.
     """
 
 
-    def __init__(self, file):
+    def __init__(self, file, **options):
         self.file = file
         self.append = None
         self.bytes_per_file = None
@@ -59,6 +61,44 @@ class FileSink(streamsx.topology.composite.ForEach):
         self.tuples_per_file = None
         self.write_failure_action = None
         self.write_punctuations = None
+        if 'append' in options:
+            self.append = options.get('append')
+        if 'bytes_per_file' in options:
+            self.bytes_per_file = options.get('bytes_per_file')
+        if 'close_mode' in options:
+            self.close_mode = options.get('close_mode')
+        if 'compression' in options:
+            self.compression = options.get('compression')
+        if 'encoding' in options:
+            self.encoding = options.get('encoding')
+        if 'eol_marker' in options:
+            self.eol_marker = options.get('eol_marker')
+        if 'flush' in options:
+            self.flush = options.get('flush')
+        if 'flush_on_punctuation' in options:
+            self.flush_on_punctuation = options.get('flush_on_punctuation')
+        if 'format' in options:
+            self.format = options.get('format')
+        if 'has_delay_field' in options:
+            self.has_delay_field = options.get('has_delay_field')
+        if 'move_file_to_directory' in options:
+            self.move_file_to_directory = options.get('move_file_to_directory')
+        if 'quote_strings' in options:
+            self.quote_strings = options.get('quote_strings')
+        if 'separator' in options:
+            self.separator = options.get('separator')
+        if 'suppress' in options:
+            self.suppress = options.get('suppress')
+        if 'time_per_file' in options:
+            self.time_per_file = options.get('time_per_file')
+        if 'truncate_on_reset' in options:
+            self.truncate_on_reset = options.get('truncate_on_reset')
+        if 'tuples_per_file' in options:
+            self.tuples_per_file = options.get('tuples_per_file')
+        if 'write_failure_action' in options:
+            self.write_failure_action = options.get('write_failure_action')
+        if 'write_punctuations' in options:
+            self.write_punctuations = options.get('write_punctuations')
 
     @property
     def append(self):
