@@ -77,6 +77,41 @@ class TestCSV(TestCase):
         tester.contents(r, expected)
         tester.test(self.test_ctxtype, self.test_config)
 
+    def test_composite_kwargs(self):
+        topo = Topology()
+        s = topo.source(range(13))
+        sch = 'tuple<rstring a, int32 b>'
+        s = s.map(lambda v: ('A'+str(v), v+7), schema=sch)
+
+        fn = os.path.join(self.dir, 'data.csv')
+
+        config = {
+            'append': True,
+            'flush': 1,
+            'close_mode': CloseMode.punct.name,
+            'flush_on_punctuation': True,
+            'format': Format.csv.name,
+            'has_delay_field': False,
+            'quote_strings': False,
+            'write_failure_action': WriteFailureAction.log.name,
+            'write_punctuations': False,
+        }
+        fsink = files.FileSink(fn, **config)
+        s.for_each(fsink)
+
+        tester = Tester(topo)
+        tester.tuple_count(s, 13)
+        tester.test(self.test_ctxtype, self.test_config)
+
+        self.assertTrue(os.path.isfile(fn))
+
+        topo = Topology()
+        r = files.csv_reader(topo, schema=sch, file=fn)
+        expected = [ {'a':'A'+str(v), 'b':v+7} for v in range(13)]
+
+        tester = Tester(topo)
+        tester.contents(r, expected)
+        tester.test(self.test_ctxtype, self.test_config)
 
     def test_read_file_from_application_dir(self):
         topo = Topology()
