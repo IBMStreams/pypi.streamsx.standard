@@ -29,6 +29,18 @@ class FileSink(streamsx.topology.composite.ForEach):
         s = topo.source(['Hello', 'World!']).as_string()
         s.for_each(files.FileSink(file=os.path.join(tempfile.mkdtemp(), 'data.txt')))
 
+    Example with specifying parameters as kwargs and construct the name of the file with the attribute ``filename`` of the input stream::
+
+        config = {
+            'format': Format.txt.name,
+            'tuples_per_file': 50000,
+            'close_mode': CloseMode.count.name,
+            'write_punctuations': True,
+            'suppress': 'filename'
+        }
+        fsink = files.FileSink(file=streamsx.spl.op.Expression.expression('"/tmp/"+'+'filename'), **config)
+        to_file.for_each(fsink)
+
     .. versionadded:: 0.5
 
     Attributes
@@ -327,7 +339,7 @@ The modifiers can be repeated in the string, and are all replaced with their val
             if self.append is True:
                 self.append = streamsx.spl.op.Expression.expression('true')
         if self.bytes_per_file is not None:
-            self.bytes_per_file = streamsx.spl.types.int32(self.bytes_per_file)
+            self.bytes_per_file = streamsx.spl.types.uint32(self.bytes_per_file)
         if self.close_mode is not None:
             self.close_mode = streamsx.spl.op.Expression.expression(self.close_mode)
         if self.compression is not None:
@@ -361,7 +373,7 @@ The modifiers can be repeated in the string, and are all replaced with their val
             else:
                 self.truncate_on_reset = streamsx.spl.op.Expression.expression('false')
         if self.tuples_per_file is not None:
-            self.tuples_per_file = streamsx.spl.types.int32(self.tuples_per_file)
+            self.tuples_per_file = streamsx.spl.types.uint32(self.tuples_per_file)
         if self.write_failure_action is not None:
             self.write_failure_action = streamsx.spl.op.Expression.expression(self.write_failure_action)
         if self.write_punctuations is not None:

@@ -2,6 +2,8 @@ from unittest import TestCase
 
 
 import streamsx.standard.files as files
+import streamsx.standard.utility as U
+import streamsx.standard.relational as R
 from streamsx.standard import CloseMode, Format, WriteFailureAction
 
 from streamsx.topology.topology import Topology
@@ -128,12 +130,28 @@ class TestCSV(TestCase):
         tester.tuple_count(r, 3)
         tester.test(self.test_ctxtype, self.test_config)
 
-#        result = streamsx.topology.context.submit("TOOLKIT", topo.graph) # creates tk* directory
-#        print('(TOOLKIT):' + str(result))
-#        assert(result.return_code == 0)
-#        result = streamsx.topology.context.submit("BUNDLE", topo.graph)  # creates sab file
-#        print('(BUNDLE):' + str(result))
-#        assert(result.return_code == 0)
+    def test_filename_from_stream(self):
+        topo = Topology()
+        s = U.sequence(topo, iterations=5)
+        F = U.SEQUENCE_SCHEMA.extend(StreamSchema('tuple<rstring filename>'))
+        fo = R.Functor.map(s, F)     
+        fo.filename = fo.output(fo.outputs[0], '"myfile_{id}.txt"')
+        to_file = fo.outputs[0]
+
+        config = {
+            'format': Format.txt.name,
+            'tuples_per_file': 5,
+            'close_mode': CloseMode.count.name,
+            'write_punctuations': True,
+            'suppress': 'filename, ts'
+        }
+        fsink = files.FileSink(file=streamsx.spl.op.Expression.expression('"'+self.dir+'/"+'+'filename'), **config)
+        to_file.for_each(fsink)
+
+        tester = Tester(topo)
+        tester.tuple_count(to_file, 5)
+        tester.test(self.test_ctxtype, self.test_config)
+
 
 class TestParams(TestCase):
 
