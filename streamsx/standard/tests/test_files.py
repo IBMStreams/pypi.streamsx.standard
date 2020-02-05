@@ -167,4 +167,32 @@ class TestParams(TestCase):
         self.assertRaises(TypeError, files.csv_reader, topo, 'tuple<rstring a>', fn) # expects str or Expression for file
 
 
+class TestDirScan(TestCase):
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        Tester.setup_standalone(self)
+
+    def tearDown(self):
+        shutil.rmtree(self.dir)
+
+    def test_dir_scan(self):
+        topo = Topology()
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        sample_file = os.path.join(script_dir, 'data.csv')
+        topo.add_file_dependency(sample_file, 'etc') # add sample file to etc dir in bundle
+        fn = os.path.join('etc', 'data.csv') # file name relative to application dir
+        sch = 'tuple<rstring sourceFile>'
+        dir = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/etc"')
+        scanned = topo.source(files.DirectoryScan(directory=dir, schema=sch))
+        scanned.print()
+
+        #result = streamsx.topology.context.submit("TOOLKIT", topo.graph) # creates tk* directory
+        #print('(TOOLKIT):' + str(result))
+        #assert(result.return_code == 0)
+        result = streamsx.topology.context.submit("BUNDLE", topo.graph)  # creates sab file
+        #print('(BUNDLE):' + str(result))
+        assert(result.return_code == 0)
+        os.remove(result.bundlePath)
+        os.remove(result.jobConfigPath)
+
 
