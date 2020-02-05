@@ -16,6 +16,152 @@ import streamsx.standard._version
 __version__ = streamsx.standard._version.__version__
 
 
+class DirectoryScan(streamsx.topology.composite.Source):
+    """
+    Watches a directory, and generates file names on the output, one for each file that is found in the directory.
+
+    Attributes
+    ----------
+    directory : str
+        Specifies the name of the directory to be scanned
+    options : kwargs
+        The additional optional parameters as variable keyword arguments.
+    """
+
+    def __init__(self, directory, schema, **options):
+        self.directory = directory
+        self.schema = schema
+        self.pattern = None
+        self.sleep_time = None
+        self.init_delay = None
+        self.sort_by = None
+        self.order = None
+        self.move_to_directory = None
+        self.ignore_dot_files = None
+        self.ignore_existing_files_at_startup = None
+
+    @property
+    def pattern(self):
+        """
+            str: Instructs the DirectoryScan operator to ignore file names that do not match the regular expression pattern
+        """
+        return self._pattern
+
+    @pattern.setter
+    def pattern(self, value):
+        self._pattern = value
+
+    @property
+    def sleep_time(self):
+        """
+            float: Specifies the minimal time between scans of the directory, in seconds. If this parameter is not specified, the default is 5.0 seconds.
+        """
+        return self._sleep_time
+
+    @sleep_time.setter
+    def sleep_time(self, value):
+        self._sleep_time = value
+
+    @property
+    def init_delay(self):
+        """
+            float: Specifies the number of seconds that the DirectoryScan operator delays before it starts to produce tuples.
+        """
+        return self._init_delay
+
+    @init_delay.setter
+    def init_delay(self, value):
+        self._init_delay = value
+
+    @property
+    def sort_by(self):
+        """
+            enum: Determines the order in which file names are generated during a single scan of the directory when there are multiple valid files at the same time. The valid values are date and name. If the sort_by parameter is not specified, the default sort order is set to date.
+        """
+        return self._sort_by
+
+    @sort_by.setter
+    def sort_by(self, value):
+        self._sort_by = value
+
+    @property
+    def order(self):
+        """
+            enum: Controls how the sortBy parameter sorts the files. The valid values are ascending and descending. If the order parameter is not specified, the default value is set to ascending.
+        """
+        return self._order
+
+    @order.setter
+    def order(self, value):
+        self._order = value
+
+    @property
+    def move_to_directory(self):
+        """
+            str: Specifies the name of the directory to which files are moved before the output tuple is generated.
+        """
+        return self._move_to_directory
+
+    @move_to_directory.setter
+    def move_to_directory(self, value):
+        self._move_to_directory = value
+
+    @property
+    def ignore_dot_files(self):
+        """
+            bool: Specifies whether the DirectoryScan operator ignores files with a leading period (.) in the directory. By default, the value is set to false and files with a leading period are processed.
+        """
+        return self._ignore_dot_files
+
+    @ignore_dot_files.setter
+    def ignore_dot_files(self, value):
+        self._ignore_dot_files = value
+
+    @property
+    def ignore_existing_files_at_startup(self):
+        """
+            bool: Specifies whether the DirectoryScan operator ignores pre-existing files in the directory. By default, the value is set to false and all files are processed as usual. If set to true, any files present in the directory are marked as already processed, and not submitted.
+        """
+        return self._ignore_existing_files_at_startup
+
+    @ignore_existing_files_at_startup.setter
+    def ignore_existing_files_at_startup(self, value):
+        self._ignore_existing_files_at_startup = value
+
+
+    def populate(self, topology, name, **options):
+
+        if self.sleep_time is not None:
+            self.sleep_time = streamsx.spl.types.float64(self.sleep_time)
+        if self.init_delay is not None:
+            self.init_delay = streamsx.spl.types.float64(self.init_delay)
+        if self.ignore_existing_files_at_startup is not None:
+            if self.ignore_existing_files_at_startup is True:
+                self.ignore_existing_files_at_startup = streamsx.spl.op.Expression.expression('true')
+        if self.ignore_dot_files is not None:
+            if self.ignore_dot_files is True:
+                self.ignore_dot_files = streamsx.spl.op.Expression.expression('true')
+        if self.sort_by is not None:
+            self.sort_by = streamsx.spl.op.Expression.expression(self.sort_by)
+        if self.order is not None:
+            self.order = streamsx.spl.op.Expression.expression(self.order)
+
+        _op = _DirectoryScan(topology=topology, \
+                        schema=self.schema, \
+                        directory=self.directory, \
+                        pattern=self.pattern, \
+                        sleepTime=self.sleep_time, \
+                        initDelay=self.init_delay, \
+                        sortBy=self.sort_by, \
+                        order=self.order, \
+                        moveToDirectory=self.move_to_directory, \
+                        ignoreDotFiles=self.ignore_dot_files, \
+                        ignoreExistingFilesAtStartup=self.ignore_existing_files_at_startup, \
+                        name=name)
+
+        return _op.stream
+
+
 class FileSink(streamsx.topology.composite.ForEach):
     """
     Write a stream to a file
@@ -47,10 +193,9 @@ class FileSink(streamsx.topology.composite.ForEach):
     ----------
     file : str
         Name of the output file.
-    options : dict
+    options : kwargs
         The additional optional parameters as variable keyword arguments.
     """
-
 
     def __init__(self, file, **options):
         self.file = file
@@ -497,7 +642,7 @@ def csv_writer(stream, file, append=None, encoding=None, separator=None, flush=N
 
 
 class _DirectoryScan(streamsx.spl.op.Source):
-    def __init__(self, topology, schema,directory, pattern=None, sleepTime=None, initDelay=None, sortBy=None, order=None, moveToDirectory=None, ignoreDotFiles=None, ignoreExistingFilesAtStartup=None, name=None):
+    def __init__(self, topology, schema, directory, pattern=None, sleepTime=None, initDelay=None, sortBy=None, order=None, moveToDirectory=None, ignoreDotFiles=None, ignoreExistingFilesAtStartup=None, name=None):
         kind="spl.adapter::DirectoryScan"
         inputs=None
         schemas=schema
