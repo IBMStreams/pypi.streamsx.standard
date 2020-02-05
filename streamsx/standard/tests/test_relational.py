@@ -97,3 +97,39 @@ class TestFunctor(TestCase):
         tester.tuple_count(b, 2)
         tester.test(self.test_ctxtype, self.test_config)
 
+
+class TestFilter(TestCase):
+    def setUp(self):
+        Tester.setup_standalone(self)
+
+     
+    def test_single_output(self):
+        topo = Topology()
+        s = U.sequence(topo, iterations=4)
+        matches = R.Filter.matching(s, filter='seq<2ul')
+
+        tester = Tester(topo)
+        tester.tuple_count(matches, 2)
+        tester.test(self.test_ctxtype, self.test_config)
+
+     
+    def test_non_matching_output(self):
+        topo = Topology()
+        s = U.sequence(topo, iterations=4)
+        matches, non_matches = R.Filter.matching(s, filter='seq<2ul', non_matching=True)
+
+        tester = Tester(topo)
+        tester.tuple_count(matches, 2)
+        tester.tuple_count(non_matches, 2)
+        tester.test(self.test_ctxtype, self.test_config)
+
+    def test_filter_none(self):
+        topo = Topology()
+        s = U.sequence(topo, iterations=4)
+        matches = R.Filter.matching(s, filter=None)
+
+        tester = Tester(topo)
+        tester.tuple_count(matches, 4)
+        tester.test(self.test_ctxtype, self.test_config)
+
+
