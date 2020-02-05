@@ -8,7 +8,7 @@ Functionality common to multiple modules.
 
 import enum
 
-__all__ = ['CloseMode', 'WriteFailureAction', 'Format', 'Compression']
+__all__ = ['CloseMode', 'WriteFailureAction', 'Format', 'Compression', 'SortByType', 'SortOrder']
 
 @enum.unique
 class CloseMode(enum.Enum):
@@ -59,3 +59,20 @@ class Compression(enum.Enum):
     """`gzip <https:://en.wikipedia.org/wiki/Gzip>`_ data compression."""
     bzip2 = 2
     """`bzip2 <https:://en.wikipedia.org/wiki/Bzip2>`_ data compression."""
+
+@enum.unique
+class SortByType(enum.Enum):
+    """Sort by type."""
+    date = 0
+    """sort by file date"""
+    name = 1
+    """sort by file name"""
+
+@enum.unique
+class SortOrder(enum.Enum):
+    """Sort order."""
+    ascending = 0
+    """ascending"""
+    descending = 1
+    """descending"""
+
