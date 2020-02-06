@@ -1,7 +1,7 @@
 Overview
 ========
 
-Standard streaming extenstions for IBM Streams Python support.
+Standard streaming extensions for IBM Streams Python support.
 
 Documentation
 =============
