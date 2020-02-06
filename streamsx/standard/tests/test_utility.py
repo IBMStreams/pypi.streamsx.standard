@@ -174,6 +174,12 @@ class TestUtility(TestCase):
         tester.contents(s, [1,2,4,5,2])
         tester.test(self.test_ctxtype, self.test_config)
 
+    def test_deduplicate_param_check(self):
+        topo = Topology()
+        s = topo.source([1,2,1,4,5,2])
+        s = s.map(lambda v : {'a':v}, schema='tuple<int32 a>')
+        self.assertRaises(ValueError, s.map, U.Deduplicate(count=1, period=1))
+
     def test_pair(self):
         topo = Topology()
         s = topo.source(U.Sequence(iterations=932))
