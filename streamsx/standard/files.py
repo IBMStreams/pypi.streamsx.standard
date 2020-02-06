@@ -554,11 +554,13 @@ The modifiers can be repeated in the string, and are all replaced with their val
         return streamsx.topology.topology.Sink(_op)
 
 
-def csv_reader(topology, schema, file, header=False, encoding=None, separator=None, ignoreExtraFields=False, hot=False, name=None):
+class CSVReader(streamsx.topology.composite.Source):
     """Read a comma separated value file as a stream.
 
     The file defined by `file` is read and mapped to a stream
     with a structured schema of `schema`.
+
+    .. note:: Reads a single file only
 
     Example for reading a file from application directory (file is part of application bundle)::
 
@@ -570,7 +572,7 @@ def csv_reader(topology, schema, file, header=False, encoding=None, separator=No
         topo.add_file_dependency(sample_file, 'etc') # add sample file to etc dir in bundle
         fn = os.path.join('etc', 'data.csv') # file name relative to application dir
         sch = 'tuple<rstring a, int32 b>'
-        r = files.csv_reader(topo, schema=sch, file=fn)
+        r = topo.source(files.CSVReader(schema=sch, file=fn))
 
     Example for reading a file from file system accessible from the running job, for example persistent volume claim (Cloud Pak for Data)::
 
@@ -579,10 +581,9 @@ def csv_reader(topology, schema, file, header=False, encoding=None, separator=No
 
         topo = Topology()
         sample_file = '/opt/ibm/streams-ext/data.csv' # file location accessible from running Streams application 
-        r = files.csv_reader(topo, schema='tuple<rstring a, int32 b>', file=sample_file)
+        r = topo.source(files.CSVReader(schema='tuple<rstring a, int32 b>', file=sample_file))
 
     Args:
-        topology(Topology): Topology to contain the returned stream.
         schema(StreamSchema): Schema of the returned stream.
         file(str|Expression): Name of the source file. File name in relative path is expected in application directory, for example the file is added to the application bundle.
         header: Does the file contain a header.
@@ -592,24 +593,34 @@ def csv_reader(topology, schema, file, header=False, encoding=None, separator=No
             fields than `schema` has attributes they will be ignored.
             Otherwise if there are extra fields an error is raised.
         hot(bool): Specifies whether the input file is hot, which means it is appended continuously.
-        name(str): Name of the stream, defaults to a generated name.
 
     Return:
         (Stream): Stream containing records from the file.
     """
-    fe = streamsx.spl.op.Expression.expression(Format.csv.name)
-    if isinstance(file, streamsx.spl.op.Expression) is False:
-        if isinstance(file, str):
-            if os.path.isabs(file) is False:       
-                file = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/'+file+'"')
-                print("file="+str(file))
-        else:
-            raise TypeError(file)
-    _op = _FileSource(topology, schema, file=file, format=fe, hotFile=hot,encoding=encoding,separator=separator,ignoreExtraCSVValues=ignoreExtraFields)
-    return _op.outputs[0]
+    def __init__(self, schema, file, header=False, encoding=None, separator=None, ignoreExtraFields=False, hot=False):
+        self.schema = schema
+        self.file = file
+        self.header = header
+        self.encoding = encoding
+        self.separator = separator
+        self.ignoreExtraFields = ignoreExtraFields
+        self.hot = hot
 
+    def populate(self, topology, name, **options):
+        fe = streamsx.spl.op.Expression.expression(Format.csv.name)
+        if self.file is None:
+            raise ValueError('file must not be None')
+        if isinstance(self.file, streamsx.spl.op.Expression) is False:
+            if isinstance(self.file, str):
+                if os.path.isabs(self.file) is False:       
+                    self.file = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/'+self.file+'"')
+                    print("file="+str(self.file))
+            else:
+                raise TypeError(self.file)
+        _op = _FileSource(topology, self.schema, file=self.file, format=fe, hotFile=self.hot,encoding=self.encoding,separator=self.separator,ignoreExtraCSVValues=self.ignoreExtraFields)
+        return _op.outputs[0]
 
-def csv_writer(stream, file, append=None, encoding=None, separator=None, flush=None, name=None):
+class CSVWriter(streamsx.topology.composite.ForEach):
     """Write a stream as a comma separated value file.
 
     The file defined by `file` is used as output file.
@@ -623,23 +634,29 @@ def csv_writer(stream, file, append=None, encoding=None, separator=None, flush=N
         s = topo.source(range(13))
         sch = 'tuple<rstring a, int32 b>'
         s = s.map(lambda v: ('A'+str(v), v+7), schema=sch)
-        files.csv_writer(s, file=os.path.join(tempfile.mkdtemp(), 'data.csv'))
+        s.for_each(files.CSVWriter(file=os.path.join(tempfile.mkdtemp(), 'data.csv')))
 
     Args:
-        topology(Topology): Topology to contain the returned stream.
         file(str|Expression): Name of the output file. File name in relative path is relative to data directory.
         append(bool): Specifies that the generated tuples are appended to the output file. If this parameter is false or not specified, the output file is truncated before the tuples are generated.
         encoding: Specifies the character set encoding that is used in the output file.
         separator(str): Separator between records (defaults to comma ``,``).
         flush(int): Specifies the number of tuples after which to flush the output file. By default no flushing on tuple numbers is performed. 
-        name(str): Name of the stream, defaults to a generated name.
-
     Return:
         (streamsx.spl.op.Invoke): Sink operator
 
     """
-    fe = streamsx.spl.op.Expression.expression(Format.csv.name)
-    _op = _FileSink(stream, file, format=fe, append=append, encoding=encoding, separator=separator, flush=flush, name=name)
+    def __init__(self, file, append=None, encoding=None, separator=None, flush=None):
+        self.file = file
+        self.append = append
+        self.encoding = encoding
+        self.separator = separator
+        self.flush = flush
+
+    def populate(self, topology, stream, name, **options) -> streamsx.topology.topology.Sink:
+        fe = streamsx.spl.op.Expression.expression(Format.csv.name)
+        _op = _FileSink(stream, self.file, format=fe, append=self.append, encoding=self.encoding, separator=self.separator, flush=self.flush, name=name)
+        return streamsx.topology.topology.Sink(_op)
 
 
 class _DirectoryScan(streamsx.spl.op.Source):
