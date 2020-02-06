@@ -28,9 +28,9 @@ class TestCSV(TestCase):
         s = topo.source(range(13))
         sch = 'tuple<rstring a, int32 b>'
         s = s.map(lambda v: ('A'+str(v), v+7), schema=sch)
-
         fn = os.path.join(self.dir, 'data.csv')
-        files.csv_writer(s, fn)
+        s.for_each(files.CSVWriter(fn))
+
         tester = Tester(topo)
         tester.tuple_count(s, 13)
         tester.test(self.test_ctxtype, self.test_config)
@@ -38,7 +38,7 @@ class TestCSV(TestCase):
         self.assertTrue(os.path.isfile(fn))
 
         topo = Topology()
-        r = files.csv_reader(topo, schema=sch, file=fn)
+        r = topo.source(files.CSVReader(schema=sch, file=fn))
         expected = [ {'a':'A'+str(v), 'b':v+7} for v in range(13)]
 
         tester = Tester(topo)
@@ -72,7 +72,7 @@ class TestCSV(TestCase):
         self.assertTrue(os.path.isfile(fn))
 
         topo = Topology()
-        r = files.csv_reader(topo, schema=sch, file=fn)
+        r = topo.source(files.CSVReader(schema=sch, file=fn))
         expected = [ {'a':'A'+str(v), 'b':v+7} for v in range(13)]
 
         tester = Tester(topo)
@@ -108,7 +108,7 @@ class TestCSV(TestCase):
         self.assertTrue(os.path.isfile(fn))
 
         topo = Topology()
-        r = files.csv_reader(topo, schema=sch, file=fn)
+        r = topo.source(files.CSVReader(schema=sch, file=fn))
         expected = [ {'a':'A'+str(v), 'b':v+7} for v in range(13)]
 
         tester = Tester(topo)
@@ -123,7 +123,7 @@ class TestCSV(TestCase):
         fn = os.path.join('etc', 'data.csv') # file name relative to application dir
         sch = 'tuple<rstring a, int32 b>'
         #fn = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/'+fn+'"')
-        r = files.csv_reader(topo, schema=sch, file=fn)
+        r = topo.source(files.CSVReader(schema=sch, file=fn))
         r.print()
 
         tester = Tester(topo)
@@ -158,13 +158,13 @@ class TestParams(TestCase):
     def test_filename_ok(self):
         topo = Topology()
         fn = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/a/b"')
-        files.csv_reader(topo, schema='tuple<rstring a, int32 b>', file=fn)
-        files.csv_reader(topo, schema=CommonSchema.String, file="/tmp/a")
+        topo.source(files.CSVReader(schema='tuple<rstring a, int32 b>', file=fn))
+        topo.source(files.CSVReader(schema=CommonSchema.String, file="/tmp/a"))
 
     def test_filename_bad(self):
         topo = Topology()
         fn = 1
-        self.assertRaises(TypeError, files.csv_reader, topo, 'tuple<rstring a>', fn) # expects str or Expression for file
+        self.assertRaises(TypeError, topo.source, files.CSVReader, 'tuple<rstring a>', fn) # expects str or Expression for file
 
 
 class TestDirScan(TestCase):
@@ -183,13 +183,13 @@ class TestDirScan(TestCase):
         fn = os.path.join('etc', 'data.csv') # file name relative to application dir
         dir = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/etc"')
         scanned = topo.source(files.DirectoryScan(directory=dir))
-        scanned.print()
+        r = scanned.map(files.CSVFilesReader(), schema=StreamSchema('tuple<rstring a, int32 b>'))
+        r.print()
 
         #result = streamsx.topology.context.submit("TOOLKIT", topo.graph) # creates tk* directory
         #print('(TOOLKIT):' + str(result))
         #assert(result.return_code == 0)
         result = streamsx.topology.context.submit("BUNDLE", topo.graph)  # creates sab file
-        #print('(BUNDLE):' + str(result))
         assert(result.return_code == 0)
         os.remove(result.bundlePath)
         os.remove(result.jobConfigPath)
