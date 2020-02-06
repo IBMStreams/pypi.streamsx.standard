@@ -132,7 +132,7 @@ class TestCSV(TestCase):
 
     def test_filename_from_stream(self):
         topo = Topology()
-        s = U.sequence(topo, iterations=5)
+        s = topo.source(U.Sequence(iterations=5))
         F = U.SEQUENCE_SCHEMA.extend(StreamSchema('tuple<rstring filename>'))
         fo = R.Functor.map(s, F)     
         fo.filename = fo.output(fo.outputs[0], '"myfile_{id}.txt"')
