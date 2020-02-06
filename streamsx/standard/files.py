@@ -8,8 +8,8 @@ Reading and writing of files.
 import os
 import enum
 import streamsx.spl.op
-from streamsx.topology.schema import StreamSchema
-from streamsx.standard import CloseMode, Format, Compression, WriteFailureAction
+from streamsx.topology.schema import CommonSchema, StreamSchema
+from streamsx.standard import CloseMode, Format, Compression, WriteFailureAction, SortOrder, SortByType
 import streamsx.topology.composite
 
 import streamsx.standard._version
@@ -20,18 +20,30 @@ class DirectoryScan(streamsx.topology.composite.Source):
     """
     Watches a directory, and generates file names on the output, one for each file that is found in the directory.
 
+    Example, scanning for files in application directory::
+
+        import streamsx.standard.files as files
+        from streamsx.topology.topology import Topology
+
+        dir = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/etc"')
+        s = topo.source(files.DirectoryScan(directory=dir))
+
     Attributes
     ----------
-    directory : str
+    directory : str|Expression
         Specifies the name of the directory to be scanned
+    pattern : str
+        Instructs the operator to ignore file names that do not match the regular expression pattern
+    schema : StreamSchema
+        Output schema, defaults to CommonSchema.String
     options : kwargs
         The additional optional parameters as variable keyword arguments.
     """
 
-    def __init__(self, directory, schema, **options):
+    def __init__(self, directory, pattern=None, schema=CommonSchema.String, **options):
         self.directory = directory
         self.schema = schema
-        self.pattern = None
+        self.pattern = pattern
         self.sleep_time = None
         self.init_delay = None
         self.sort_by = None
@@ -39,17 +51,6 @@ class DirectoryScan(streamsx.topology.composite.Source):
         self.move_to_directory = None
         self.ignore_dot_files = None
         self.ignore_existing_files_at_startup = None
-
-    @property
-    def pattern(self):
-        """
-            str: Instructs the DirectoryScan operator to ignore file names that do not match the regular expression pattern
-        """
-        return self._pattern
-
-    @pattern.setter
-    def pattern(self, value):
-        self._pattern = value
 
     @property
     def sleep_time(self):

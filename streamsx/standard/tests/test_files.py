@@ -4,7 +4,7 @@ from unittest import TestCase
 import streamsx.standard.files as files
 import streamsx.standard.utility as U
 import streamsx.standard.relational as R
-from streamsx.standard import CloseMode, Format, WriteFailureAction
+from streamsx.standard import CloseMode, Format, Compression, WriteFailureAction, SortOrder, SortByType
 
 from streamsx.topology.topology import Topology
 from streamsx.topology.tester import Tester
@@ -181,9 +181,8 @@ class TestDirScan(TestCase):
         sample_file = os.path.join(script_dir, 'data.csv')
         topo.add_file_dependency(sample_file, 'etc') # add sample file to etc dir in bundle
         fn = os.path.join('etc', 'data.csv') # file name relative to application dir
-        sch = 'tuple<rstring sourceFile>'
         dir = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/etc"')
-        scanned = topo.source(files.DirectoryScan(directory=dir, schema=sch))
+        scanned = topo.source(files.DirectoryScan(directory=dir))
         scanned.print()
 
         #result = streamsx.topology.context.submit("TOOLKIT", topo.graph) # creates tk* directory
