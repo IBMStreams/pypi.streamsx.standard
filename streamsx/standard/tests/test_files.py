@@ -183,13 +183,13 @@ class TestDirScan(TestCase):
         fn = os.path.join('etc', 'data.csv') # file name relative to application dir
         dir = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/etc"')
         scanned = topo.source(files.DirectoryScan(directory=dir))
-        scanned.print()
+        r = scanned.map(files.CSVFilesReader(), schema=StreamSchema('tuple<rstring a, int32 b>'))
+        r.print()
 
         #result = streamsx.topology.context.submit("TOOLKIT", topo.graph) # creates tk* directory
         #print('(TOOLKIT):' + str(result))
         #assert(result.return_code == 0)
         result = streamsx.topology.context.submit("BUNDLE", topo.graph)  # creates sab file
-        #print('(BUNDLE):' + str(result))
         assert(result.return_code == 0)
         os.remove(result.bundlePath)
         os.remove(result.jobConfigPath)

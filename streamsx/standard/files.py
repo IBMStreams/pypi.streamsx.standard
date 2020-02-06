@@ -51,6 +51,21 @@ class DirectoryScan(streamsx.topology.composite.Source):
         self.move_to_directory = None
         self.ignore_dot_files = None
         self.ignore_existing_files_at_startup = None
+        if 'sleep_time' in options:
+            self.sleep_time = options.get('sleep_time')
+        if 'init_delay' in options:
+            self.init_delay = options.get('init_delay')
+        if 'sort_by' in options:
+            self.sort_by = options.get('sort_by')
+        if 'order' in options:
+            self.order = options.get('order')
+        if 'move_to_directory' in options:
+            self.move_to_directory = options.get('move_to_directory')
+        if 'ignore_dot_files' in options:
+            self.ignore_dot_files = options.get('ignore_dot_files')
+        if 'ignore_existing_files_at_startup' in options:
+            self.ignore_existing_files_at_startup = options.get('ignore_existing_files_at_startup')
+       
 
     @property
     def sleep_time(self):
@@ -161,7 +176,6 @@ class DirectoryScan(streamsx.topology.composite.Source):
                         name=name)
 
         return _op.stream
-
 
 class FileSink(streamsx.topology.composite.ForEach):
     """
@@ -589,7 +603,7 @@ class CSVReader(streamsx.topology.composite.Source):
         header: Does the file contain a header.
         encoding: Specifies the character set encoding that is used in the output file.
         separator(str): Separator between records (defaults to comma ``,``).
-        ignoreExtraFields:  When `True` then if the file contains more
+        ignoreExtraFields(bool):  When `True` then if the file contains more
             fields than `schema` has attributes they will be ignored.
             Otherwise if there are extra fields an error is raised.
         hot(bool): Specifies whether the input file is hot, which means it is appended continuously.
@@ -617,8 +631,36 @@ class CSVReader(streamsx.topology.composite.Source):
                     print("file="+str(self.file))
             else:
                 raise TypeError(self.file)
-        _op = _FileSource(topology, self.schema, file=self.file, format=fe, hotFile=self.hot,encoding=self.encoding,separator=self.separator,ignoreExtraCSVValues=self.ignoreExtraFields)
+        _op = _FileSource(topology, schemas=self.schema, file=self.file, format=fe, hotFile=self.hot, encoding=self.encoding, separator=self.separator, hasHeaderLine=self.header, ignoreExtraCSVValues=self.ignoreExtraFields)
         return _op.outputs[0]
+
+
+class CSVFilesReader(streamsx.topology.composite.Map):
+    """Reads files given by input stream and generates tuples with the file content on the output stream.
+
+    .. note:: Each input tuple holds the file name to be read
+
+    .. seealso:: Use :py:meth:`~streamsx.standard.files.CSVReader` for single file given as parameter
+
+    Args:
+        header: Does the file contain a header.
+        encoding: Specifies the character set encoding that is used in the output file.
+        separator(str): Separator between records (defaults to comma ``,``).
+        ignoreExtraFields(bool):  When `True` then if the file contains more
+            fields than `schema` has attributes they will be ignored.
+            Otherwise if there are extra fields an error is raised.
+    """
+    def __init__(self, header=False, encoding=None, separator=None, ignoreExtraFields=False):
+        self.header = header
+        self.encoding = encoding
+        self.separator = separator
+        self.ignoreExtraFields = ignoreExtraFields
+
+    def populate(self, topology, stream, schema, name, **options):
+        fe = streamsx.spl.op.Expression.expression(Format.csv.name)
+        _op = _FileSource(topology, schemas=schema, stream=stream, format=fe, encoding=self.encoding, separator=self.separator, hasHeaderLine=self.header, ignoreExtraCSVValues=self.ignoreExtraFields)
+        return _op.outputs[0]
+
 
 class CSVWriter(streamsx.topology.composite.ForEach):
     """Write a stream as a comma separated value file.
@@ -687,9 +729,9 @@ class _DirectoryScan(streamsx.spl.op.Source):
 
 class _FileSource(streamsx.spl.op.Invoke):
     
-    def __init__(self, topology, schemas, file=None, format=None, defaultTuple=None, parsing=None, hasDelayField=None, compression=None, eolMarker=None, blockSize=None, initDelay=None, hotFile=None, deleteFile=None, moveFileToDirectory=None, separator=None, encoding=None, hasHeaderLine=None, ignoreOpenErrors=None, readPunctuations=None, ignoreExtraCSVValues=None, name=None):
+    def __init__(self, topology, schemas, stream=None, file=None, format=None, defaultTuple=None, parsing=None, hasDelayField=None, compression=None, eolMarker=None, blockSize=None, initDelay=None, hotFile=None, deleteFile=None, moveFileToDirectory=None, separator=None, encoding=None, hasHeaderLine=None, ignoreOpenErrors=None, readPunctuations=None, ignoreExtraCSVValues=None, name=None):
         kind="spl.adapter::FileSource"
-        inputs=None
+        inputs=stream
         params = dict()
         if file is not None:
             params['file'] = file
