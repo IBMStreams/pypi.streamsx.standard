@@ -1,7 +1,7 @@
 Overview
 ========
 
-Topology Integration of the SPL Standard toolkit.
+Standard streaming extenstions for IBM Streams Python support.
 
 Documentation
 =============

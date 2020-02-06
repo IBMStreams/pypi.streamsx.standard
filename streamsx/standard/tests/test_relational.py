@@ -18,7 +18,7 @@ class TestAggregate(TestCase):
      
     def test_batch_aggregate(self):
         topo = Topology()
-        s = U.sequence(topo, iterations=122)
+        s = topo.source(U.Sequence(iterations=122))
 
         w = s.batch(size=10)
 

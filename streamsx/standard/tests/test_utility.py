@@ -88,13 +88,30 @@ class GateCheck(object):
             self.last = t
         return ok
 
+
+class ThrottleCheck(object):
+     def __init__(self):
+          self.start = None
+          self.n = 0
+
+     def __call__(self, v):
+         if not self.start:
+             self.start = time.time()
+         self.n += 1
+         if self.n > 20:
+              avg_period = (time.time() - self.start) / self.n
+              return avg_period > 0.35
+             
+         return True
+
+
 class TestUtility(TestCase):
     def setUp(self):
         Tester.setup_standalone(self)
      
     def test_sequence(self):
         topo = Topology()
-        s = U.sequence(topo, iterations=122)
+        s = topo.source(U.Sequence(iterations=122))
 
         tester = Tester(topo)
         tester.tuple_check(s, lambda x: 'seq' in x and 'ts' in x)
@@ -103,7 +120,7 @@ class TestUtility(TestCase):
 
     def test_sequence_period(self):
         topo = Topology()
-        s = U.sequence(topo, iterations=67, period=0.1)
+        s = topo.source(U.Sequence(iterations=67, period=0.1))
         E = U.SEQUENCE_SCHEMA.extend(StreamSchema('tuple<float64 d>'))
 
         s = s.map(_Delta(), schema=E)
@@ -114,7 +131,7 @@ class TestUtility(TestCase):
 
     def test_spray(self):
         topo = Topology()
-        s = U.sequence(topo, iterations=2442)
+        s = topo.source(U.Sequence(iterations=2442))
         outs = []
         for so in U.spray(s, count=7):
             outs.append(so.map(lambda x : (x['seq'], x['ts']), schema=U.SEQUENCE_SCHEMA))
@@ -128,17 +145,38 @@ class TestUtility(TestCase):
     
     def test_delay(self):
         topo = Topology()
-        s = U.sequence(topo, iterations=223)
-        s = U.delay(s, delay=0.4)
+        s = topo.source(U.Sequence(iterations=223))
+        s = s.map(U.Delay(delay=0.4))
         
         tester = Tester(topo)
         tester.tuple_count(s, 223)
         tester.tuple_check(s, lambda t : (time.time() - t['ts'].time()) > 0.35)
         tester.test(self.test_ctxtype, self.test_config)
 
+    def test_throttle(self):
+        topo = Topology()
+        s = topo.source(U.Sequence(iterations=40))
+        s = s.map(U.Throttle(rate=2.0, precise=True))
+        
+        tester = Tester(topo)
+        tester.tuple_count(s, 40)
+        tester.tuple_check(s, ThrottleCheck())
+        tester.test(self.test_ctxtype, self.test_config)
+
+    def test_deduplicate(self):
+        topo = Topology()
+        s = topo.source([1,2,1,4,5,2])
+        s = s.map(lambda v : {'a':v}, schema='tuple<int32 a>')
+        s = s.map(U.Deduplicate(count=3))
+        s = s.map(lambda v : v['a'])
+        
+        tester = Tester(topo)
+        tester.contents(s, [1,2,4,5,2])
+        tester.test(self.test_ctxtype, self.test_config)
+
     def test_pair(self):
         topo = Topology()
-        s = U.sequence(topo, iterations=932)
+        s = topo.source(U.Sequence(iterations=932))
         rschema = U.SEQUENCE_SCHEMA.extend(StreamSchema('tuple<float64 score>'))
         r0 = s.map(lambda t : (t['seq'], t['ts'], 1.0), schema=rschema)
         r1 = s.map(lambda t : (t['seq'], t['ts'], 2.0), schema=rschema)
@@ -169,7 +207,7 @@ class TestUtility(TestCase):
 
     def test_union(self):
         topo = Topology()
-        s = U.sequence(topo, iterations=932)
+        s = topo.source(U.Sequence(iterations=932))
         A = U.SEQUENCE_SCHEMA.extend(StreamSchema('tuple<int32 a, int32 c>'))
         B = U.SEQUENCE_SCHEMA.extend(StreamSchema('tuple<int32 c, int32 b>'))
         F = U.SEQUENCE_SCHEMA.extend(StreamSchema('tuple<int32 c>'))
@@ -195,7 +233,7 @@ class TestUtility(TestCase):
         c = PendingStream(topo)
         g = U.gate(s, c.stream, max_unacked=G)
         g = g.map(lambda _ : time.time())
-        r = U.delay(g, delay=D)
+        r = g.map(U.Delay(delay=D))
         c.complete(r)
         tester = Tester(topo)
         tester.tuple_count(r, N)
