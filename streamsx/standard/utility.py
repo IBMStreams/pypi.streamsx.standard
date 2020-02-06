@@ -36,7 +36,8 @@ class Sequence(streamsx.topology.composite.Source):
         from streamsx.topology.topology import Topology
         import streamsx.standard.utility as U
 
-        seq = topo(U.Sequence(period=0.5), name='20Hz')
+        topo = Topology()
+        seq = topo.source(U.Sequence(period=0.5), name='20Hz')
 
     """
     def __init__(self, period:float=None, iterations:int=None, delay:float=None):
@@ -139,11 +140,11 @@ class Throttle(streamsx.topology.composite.Map):
          rate(float): Throttled rate of the returned stream in tuples/second.
          precise(bool): Try to make the rate precise at the cost of increased overhead.
 
-    Example throttling a stream ``readings`` to around 10,000 tuples per second.
+    Example throttling a stream ``readings`` to around 10,000 tuples per second::
 
         import streamsx.standard.utility as U
-
         readings = readings.map(U.Throttle(rate=10000.0))
+
     """
     def __init__(self, rate:float, precise:bool=False):
         self.rate = rate

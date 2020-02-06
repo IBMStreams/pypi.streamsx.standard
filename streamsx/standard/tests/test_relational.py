@@ -44,7 +44,7 @@ class TestFunctor(TestCase):
      
     def test_transform_two_outputs(self):
         topo = Topology()
-        s = U.sequence(topo, iterations=10)
+        s = topo.source(U.Sequence(iterations=10))
         fo = R.Functor.map(s, [StreamSchema('tuple<uint64 seq>'),StreamSchema('tuple<timestamp ts>')])
         seq = fo.outputs[0]
         ts = fo.outputs[1]
@@ -59,7 +59,7 @@ class TestFunctor(TestCase):
      
     def test_transform_filter(self):
         topo = Topology()
-        s = U.sequence(topo, iterations=5)
+        s = topo.source(U.Sequence(iterations=5))
         fo = R.Functor.map(s, StreamSchema('tuple<uint64 seq>'), filter='seq>=2ul')
         r = fo.outputs[0]
         r.print()
@@ -70,7 +70,7 @@ class TestFunctor(TestCase):
 
     def test_transform_schema(self):
         topo = Topology()
-        s = U.sequence(topo, iterations=10)
+        s = topo.source(U.Sequence(iterations=10))
         A = U.SEQUENCE_SCHEMA.extend(StreamSchema('tuple<rstring a>'))
         fo = R.Functor.map(s, A)     
         fo.a = fo.output(fo.outputs[0], '"string value"')
@@ -83,7 +83,7 @@ class TestFunctor(TestCase):
 
     def test_transform_schema_two_outputs(self):
         topo = Topology()
-        s = U.sequence(topo, iterations=2)
+        s = topo.source(U.Sequence(iterations=2))
         fo = R.Functor.map(s, [StreamSchema('tuple<uint64 seq, rstring a>'),StreamSchema('tuple<timestamp ts, int32 b>')])
         fo.a = fo.output(fo.outputs[0], '"string value"')
         fo.b = fo.output(fo.outputs[1], 99)
@@ -105,7 +105,7 @@ class TestFilter(TestCase):
      
     def test_single_output(self):
         topo = Topology()
-        s = U.sequence(topo, iterations=4)
+        s = topo.source(U.Sequence(iterations=4))
         matches = R.Filter.matching(s, filter='seq<2ul')
 
         tester = Tester(topo)
@@ -115,7 +115,7 @@ class TestFilter(TestCase):
      
     def test_non_matching_output(self):
         topo = Topology()
-        s = U.sequence(topo, iterations=4)
+        s = topo.source(U.Sequence(iterations=4))
         matches, non_matches = R.Filter.matching(s, filter='seq<2ul', non_matching=True)
 
         tester = Tester(topo)
@@ -125,7 +125,7 @@ class TestFilter(TestCase):
 
     def test_filter_none(self):
         topo = Topology()
-        s = U.sequence(topo, iterations=4)
+        s = topo.source(U.Sequence(iterations=4))
         matches = R.Filter.matching(s, filter=None)
 
         tester = Tester(topo)

@@ -10,4 +10,5 @@ Format = enum.Enum('Format', 'csv txt bin block line')
 Compression = enum.Enum('Compression', 'zlib gzip bzip2')
 CloseMode = enum.Enum('CloseMode', 'punct count size time dynamic never')
 WriteFailureAction = enum.Enum('WriteFailureAction', 'ignore log terminate')
-
+SortByType =  = enum.Enum('SortByType', 'date name')
+SortOrder =  = enum.Enum('SortOrder', 'ascending descending')

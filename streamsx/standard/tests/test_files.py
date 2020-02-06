@@ -4,7 +4,7 @@ from unittest import TestCase
 import streamsx.standard.files as files
 import streamsx.standard.utility as U
 import streamsx.standard.relational as R
-from streamsx.standard import CloseMode, Format, WriteFailureAction
+from streamsx.standard import CloseMode, Format, Compression, WriteFailureAction, SortOrder, SortByType
 
 from streamsx.topology.topology import Topology
 from streamsx.topology.tester import Tester
@@ -132,7 +132,7 @@ class TestCSV(TestCase):
 
     def test_filename_from_stream(self):
         topo = Topology()
-        s = U.sequence(topo, iterations=5)
+        s = topo.source(U.Sequence(iterations=5))
         F = U.SEQUENCE_SCHEMA.extend(StreamSchema('tuple<rstring filename>'))
         fo = R.Functor.map(s, F)     
         fo.filename = fo.output(fo.outputs[0], '"myfile_{id}.txt"')
@@ -166,5 +166,32 @@ class TestParams(TestCase):
         fn = 1
         self.assertRaises(TypeError, files.csv_reader, topo, 'tuple<rstring a>', fn) # expects str or Expression for file
 
+
+class TestDirScan(TestCase):
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        Tester.setup_standalone(self)
+
+    def tearDown(self):
+        shutil.rmtree(self.dir)
+
+    def test_dir_scan(self):
+        topo = Topology()
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        sample_file = os.path.join(script_dir, 'data.csv')
+        topo.add_file_dependency(sample_file, 'etc') # add sample file to etc dir in bundle
+        fn = os.path.join('etc', 'data.csv') # file name relative to application dir
+        dir = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/etc"')
+        scanned = topo.source(files.DirectoryScan(directory=dir))
+        scanned.print()
+
+        #result = streamsx.topology.context.submit("TOOLKIT", topo.graph) # creates tk* directory
+        #print('(TOOLKIT):' + str(result))
+        #assert(result.return_code == 0)
+        result = streamsx.topology.context.submit("BUNDLE", topo.graph)  # creates sab file
+        #print('(BUNDLE):' + str(result))
+        assert(result.return_code == 0)
+        os.remove(result.bundlePath)
+        os.remove(result.jobConfigPath)
 
 
