@@ -29,7 +29,7 @@ class Aggregate(Map):
     the maximum, minimum and average reading over the last ten minutes
     updating every minute and grouped by sensor::
 
-        from streamsx.standard.utility import Aggregate
+        from streamsx.standard.relational import Aggregate
 
         # Declare the window
         win = readings.last(datetime.timedelta(minutes=10)).trigger(datetime.timedelta(minutes=1))
@@ -294,28 +294,102 @@ class Aggregate(Map):
         return self._output_func('SampleStdDev' if sample else 'PopulationStdDev', attribute)
 
 
-class _Filter(Invoke):
-    @staticmethod
-    def matching(stream, filter, name=None):
-        _op = Filter(stream, name=name)
-        _op.params['filter'] = _op.expression(filter);
-        return _op.outputs[0]
+class Filter(Invoke):
+    """Removes tuples from a stream by passing along only those tuples that satisfy a user-specified condition.
 
-    def __init__(self, stream, filter=None, non_matching=False, name=None):
+    Non-matching tuples can be sent to a second optional output.
+
+    The schema transformation is implemented using the ``spl.relational::Filter``
+    SPL primitive operator from the SPL Standard toolkit.
+
+    Example with one output stream::
+
+        import streamsx.standard.relational as R
+        import streamsx.standard.utility as U
+
+        topo = Topology()
+        s = U.sequence(topo, iterations=4)
+        matches = R.Filter.matching(s, filter='seq>=2ul')
+
+    Example with matching and non matching streams::
+
+        topo = Topology()
+        s = U.sequence(topo, iterations=4)
+        matches, non_matches = R.Filter.matching(s, filter='seq<2ul', non_matching=True)
+
+    """
+    @staticmethod
+    def matching(stream, filter, non_matching=False, name=None):
+        """Filters input tuples to one or two output streams
+
+        Args:
+            stream: Input stream
+            filter(str): Specifies that the condition that determines the tuples to be passed along by the Filter operator
+            non_matching(bool): Non-matching tuples are sent to a second optional output stream
+            name(str): Invocation name, defaults to a generated name.
+
+        Returns:
+             Stream: matching tuples (optional second stream for non matching tuples).
+        """
+        _op = Filter(stream, non_matching, name=name)
+        if filter is not None:
+            _op.params['filter'] = _op.expression(filter);
+        if non_matching:
+            return _op.outputs[0], _op.outputs[1]
+        else:
+            return _op.outputs[0]
+
+    def __init__(self, stream, non_matching=False, name=None):
         topology = stream.topology
         kind="spl.relational::Filter"
         inputs=stream
         schema = stream.oport.schema
         schemas = [schema,schema] if non_matching else schema
         params = dict()
-        if filter is not None:
-            params['filter'] = filter
         super(Filter, self).__init__(topology,kind,inputs,schemas,params,name)
 
 
-class _Functor(Invoke):
+class Functor(Invoke):
+    """Transform input tuples into output ones, and optionally filter them.
+
+    If you do not filter an input tuple, any incoming tuple results in a tuple on each output stream
+
+    The schema transformation is implemented using the ``spl.relational::Functor``
+    SPL primitive operator from the SPL Standard toolkit.
+
+    Example with schema transformation and two output streams::
+
+        import streamsx.standard.relational as R
+        import streamsx.standard.utility as U
+
+        topo = Topology()
+        s = U.sequence(topo, iterations=10) # schema is 'tuple<uint64 seq, timestamp ts>'
+        fo = R.Functor.map(s, [StreamSchema('tuple<uint64 seq>'),StreamSchema('tuple<timestamp ts>')])
+        seq_stream = fo.outputs[0] # schema is 'tuple<uint64 seq>' only
+        ts_stream = fo.outputs[1] # schema is 'tuple<timestamp ts>' only
+
+    Example with filter some tuples::
+
+        topo = Topology()
+        s = U.sequence(topo, iterations=5)
+        fo = R.Functor.map(s, StreamSchema('tuple<uint64 seq>'), filter='seq>=2ul')
+        fstream = fo.outputs[0]
+        fstream.print()
+
+    """
     @staticmethod
     def map(stream, schema, filter=None, name=None):
+        """Map input stream schema to one or more output schemas
+
+        Args:
+            stream: Input stream
+            schema(str,StreamSchema): Schema of output stream(s).
+            filter(str): Specifies the condition that determines which input tuples are to be operated on.
+            name(str): Invocation name, defaults to a generated name.
+
+        Returns:
+             Functor: Functor invocation.
+        """
         _op = Functor(stream, schema, name=name)
         if filter is not None:
             _op.params['filter'] = _op.expression(filter);
@@ -326,8 +400,6 @@ class _Functor(Invoke):
         kind="spl.relational::Functor"
         inputs=stream
         params = dict()
-        if filter is not None:
-            params['filter'] = filter
         super(Functor, self).__init__(topology,kind,inputs,schemas,params,name)
 
 
