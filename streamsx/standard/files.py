@@ -28,6 +28,10 @@ class DirectoryScan(streamsx.topology.composite.Source):
         dir = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/etc"')
         s = topo.source(files.DirectoryScan(directory=dir))
 
+    Example, scanning for files with "csv" file extension::
+
+        s = topo.source(files.DirectoryScan(directory='/opt/ibm/streams-ext/input', pattern='.*\.csv$'))
+
     Attributes
     ----------
     directory : str|Expression
@@ -576,6 +580,8 @@ class CSVReader(streamsx.topology.composite.Source):
 
     .. note:: Reads a single file only
 
+    .. seealso:: Use :py:meth:`~streamsx.standard.files.CSVFilesReader` for reading multiple files, each input tuple holds the file name to be read
+
     Example for reading a file from application directory (file is part of application bundle)::
 
         import streamsx.standard.files as files
@@ -641,6 +647,14 @@ class CSVFilesReader(streamsx.topology.composite.Map):
     .. note:: Each input tuple holds the file name to be read
 
     .. seealso:: Use :py:meth:`~streamsx.standard.files.CSVReader` for single file given as parameter
+
+    Example, scanning for files with "csv" file extension and reading them::
+
+        import streamsx.standard.files as files
+        from streamsx.topology.topology import Topology
+
+        s = topo.source(files.DirectoryScan(directory='/opt/ibm/streams-ext/input', pattern='.*\.csv$'))
+        r = s.map(files.CSVFilesReader(), schema=StreamSchema('tuple<rstring a, int32 b>'))
 
     Args:
         header: Does the file contain a header.
