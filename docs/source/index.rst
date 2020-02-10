@@ -1,8 +1,8 @@
 streamsx.standard package
 #########################
 
-Overview
-========
+Standard toolkit integration for IBM Streams
+============================================
 
 This package exposes functionality from the IBM Streams SPL
 Standard toolkit for Python topologies (``Topology``).
