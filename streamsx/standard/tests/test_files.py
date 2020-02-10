@@ -182,7 +182,7 @@ class TestDirScan(TestCase):
         topo.add_file_dependency(sample_file, 'etc') # add sample file to etc dir in bundle
         fn = os.path.join('etc', 'data.csv') # file name relative to application dir
         dir = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/etc"')
-        scanned = topo.source(files.DirectoryScan(directory=dir))
+        scanned = topo.source(files.DirectoryScan(directory=dir, pattern='.*\.csv$'))
         r = scanned.map(files.CSVFilesReader(), schema=StreamSchema('tuple<rstring a, int32 b>'))
         r.print()
 
