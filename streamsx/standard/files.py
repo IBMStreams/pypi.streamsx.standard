@@ -185,6 +185,8 @@ class FileSink(streamsx.topology.composite.ForEach):
     """
     Write a stream to a file
 
+    .. note:: Only the last component of the path name is created if it does not exist. All directories in the path name up to the last component must exist.
+
     Example for writing a stream to a file::
 
         import streamsx.standard.files as files
@@ -192,7 +194,7 @@ class FileSink(streamsx.topology.composite.ForEach):
 
         topo = Topology()
         s = topo.source(['Hello', 'World!']).as_string()
-        s.for_each(files.FileSink(file=os.path.join(tempfile.mkdtemp(), 'data.txt')))
+        s.for_each(files.FileSink(file='/tmp/data.txt'))
 
     Example with specifying parameters as kwargs and construct the name of the file with the attribute ``filename`` of the input stream::
 
@@ -690,7 +692,9 @@ class CSVWriter(streamsx.topology.composite.ForEach):
         s = topo.source(range(13))
         sch = 'tuple<rstring a, int32 b>'
         s = s.map(lambda v: ('A'+str(v), v+7), schema=sch)
-        s.for_each(files.CSVWriter(file=os.path.join(tempfile.mkdtemp(), 'data.csv')))
+        s.for_each(files.CSVWriter(file='/tmp/data.txt'))
+
+    .. note:: Only the last component of the path name is created if it does not exist. All directories in the path name up to the last component must exist.
 
     Args:
         file(str|Expression): Name of the output file. File name in relative path is relative to data directory.
