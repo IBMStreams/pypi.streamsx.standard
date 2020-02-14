@@ -15,7 +15,7 @@
 	    <fileset dir="${basedir}" includes="**/tk*/**"/>
 	</delete>
 	<delete includeemptydirs="true">
-	    <fileset dir="${package}" includes="**/build/**,dist/**,streamsx.*.egg-info/**,job*.tar.gz"/>
+	    <fileset dir="${package}" includes="**/build/**,**/generated/**,dist/**,streamsx.*.egg-info/**,job*.tar.gz"/>
 	</delete>
 	<delete includeemptydirs="true">
 	    <fileset dir="${basedir}" includes="**/nose_runs/**"/>
