@@ -34,6 +34,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
+    'sphinx.ext.intersphinx',
 ]
 
 autodoc_default_flags = ['members', 'show-inheritance']
@@ -343,3 +344,7 @@ texinfo_documents = [
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #
 # texinfo_no_detailmenu = False
+
+# -- Interspinx references -------------------------------------------
+
+intersphinx_mapping = {'topology_ref': ('https://streamsxtopology.readthedocs.io/en/stable/', None)}
