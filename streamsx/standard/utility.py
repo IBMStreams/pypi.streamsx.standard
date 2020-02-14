@@ -111,13 +111,25 @@ def spray(stream, count, queue=1000, name=None):
     then processing of the input stream is blocked until there
     is space in the queue.
 
+    Example, spray the source tuples to 8 streams::
+
+        from streamsx.topology.topology import Topology
+        import streamsx.standard.utility as U
+
+        topo = Topology()
+        s = topo.source(U.Sequence())
+        outs = []
+        for so in U.spray(s, count=8):
+            outs.append(so.map(lambda x : (x['seq'], x['ts']), schema=U.SEQUENCE_SCHEMA))
+        s = outs[0].union(set(outs))
+
     Args:
         count(int): Number of output streams the input stream will be sprayed across.
         queue(int): Maximum queue size.
         name(str): Name of the stream, if `None` a generated name is used.
 
     Returns:
-        list(Stream) : List of output streams.
+        list(:py:class:`topology_ref:streamsx.topology.topology.Stream`) : List of output streams.
     """
     _op = _ThreadedSplit(stream, count, queue,name=name)
     return _op.outputs
@@ -185,18 +197,30 @@ def union(inputs, schema, name=None):
     the output schemas and the input schemas may contain additional
     attributes which will be discarded.
 
+    Example, the output of :py:meth:`~streamsx.standard.utility.union` contains attribute ``c`` only::
+
+        from streamsx.topology.topology import Topology
+        import streamsx.standard.utility as U
+
+        topo = Topology()
+        ...
+        # schema of stream a: 'tuple<int32 a, int32 c>'
+        # schema of stream b: 'tuple<int32 c, int32 b>'
+        r = U.union([a,b], schema='tuple<int32 c>')
+
+
     .. note:: 
-        This method differs from ``Stream.union`` in that 
+        This method differs from :py:meth:`topology_ref:streamsx.topology.topology.Stream.union` in that 
         the schemas of input and output streams can differ, while
-        ``Stream.union`` requires matching input and output schemas.
+        :py:meth:`~streamsx.standard.utility.union` requires matching input and output attributes.
 
     Args:
-        inputs(list[Stream]): Streams to be unioned.
-        schema(StreamSchema): Schema of output stream
+        inputs(list[:py:class:`topology_ref:streamsx.topology.topology.Stream`]): Streams to be unioned.
+        schema(:py:class:`topology_ref:streamsx.topology.schema.StreamSchema`): Schema of output stream
         name(str): Name of the stream, if `None` a generated name is used.
 
     Returns:
-        Stream: Stream that is a union of `inputs`.
+        :py:class:`topology_ref:streamsx.topology.topology.Stream`: Stream that is a union of `inputs`.
 
     """
     _op = _Union(inputs, schema, name=name)
@@ -226,6 +250,15 @@ class Deduplicate(streamsx.topology.composite.Map):
     Args:
         count(int): Number of tuples.
         period(float): Time period to check for duplicates.
+
+    Example discarding duplicate tuples wth `a=1` and `a=2`::
+
+        import streamsx.standard.utility as U
+        topo = Topology()
+        s = topo.source([1,2,1,4,5,2,6,3,7,8,9])
+        s = s.map(lambda v : {'a':v}, schema='tuple<int32 a>')
+        s = s.map(U.Deduplicate(count=10))
+
     """
     def __init__(self, count:int=None, period:float=None):
         self.count = count
@@ -302,7 +335,7 @@ def pair(stream0, stream1, matching=None, name=None):
     """Pair tuples across two streams.
 
     This method is used to merge results from performing
-    parallel tasks on the same stream, for example peform multiple
+    parallel tasks on the same stream, for example perform multiple
     model scoring on the same stream.
 
     Holds tuples on the two input streams until a matched tuple has been
@@ -347,13 +380,13 @@ def pair(stream0, stream1, matching=None, name=None):
         cust_churn_renew = U.pair(cust_churn, cust_renew, matching='id');
 
     Args:
-        stream0(Stream): First input stream.
-        stream1(Stream): Second input stream.
+        stream0(:py:class:`topology_ref:streamsx.topology.topology.Stream`): First input stream.
+        stream1(:py:class:`topology_ref:streamsx.topology.topology.Stream`): Second input stream.
         matching(str): Attribute name for matching tuples.
         name(str): Name of resultant stream, defaults to a generated name.
 
     Returns:
-        Stream: Paired stream.
+        :py:class:`topology_ref:streamsx.topology.topology.Stream`: Paired stream.
     """
     return merge([stream0, stream1], matching, name)
 
@@ -361,7 +394,7 @@ def merge(inputs, matching=None, name=None):
     """Merge tuples across two (or more) streams.
 
     This method is used to merge results from performing
-    parallel tasks on the same stream, for example peform multiple
+    parallel tasks on the same stream, for example perform multiple
     model scoring on the same stream.
 
     Holds tuples on the input streams until a matched tuple has been
@@ -386,12 +419,12 @@ def merge(inputs, matching=None, name=None):
        * ``CommonSchema.Json``
 
     Args:
-        inputs(list[Stream]): Input streams to be matched.
+        inputs(list[:py:class:`topology_ref:streamsx.topology.topology.Stream`]): Input streams to be matched.
         matching(str): Attribute name for matching.
         name(str): Name of resultant stream, defaults to a generated name.
 
     Returns:
-        Stream: Merged stream.
+        :py:class:`topology_ref:streamsx.topology.topology.Stream`: Merged stream.
     """
     _op = _Pair(inputs, matching, name=name)
     return _op.outputs[0]
@@ -421,17 +454,29 @@ def gate(stream, control, max_unacked=1, ack_count=1, name=None):
     tuples reaches `max_unacked` again.
 
     The output of some downstream processing is typically used as `control`
-    and thus `control` is usually a stream obtained from a `streamsx.topology.topology.PendingStream`.
+    and thus `control` is usually a stream obtained from a :py:class:`topology_ref:streamsx.topology.topology.PendingStream`.
+
+    Example with feedback loop::
+
+        import streamsx.standard.utility as U
+
+        topo = Topology()
+        s = topo.source(range(100))
+        c = PendingStream(topo)
+        g = U.gate(s, c.stream, max_unacked=1)
+        g = g.map(lambda _ : time.time())
+        r = g.map(U.Delay(delay=1.0))
+        c.complete(r)
 
     Args:
-        stream(Stream): Stream to be gated.
-        control(Stream): Controlling stream.
+        stream(:py:class:`topology_ref:streamsx.topology.topology.Stream`): Stream to be gated.
+        control(:py:class:`topology_ref:streamsx.topology.topology.Stream`): Controlling stream.
         max_unacked(int): Maximum of tuples allowed through the gate without acknowledgement.
         ack_count(int): Count of tuples to acknowledge with each tuple arriving on `control`.
         name(str): Name of resultant stream, defaults to a generated name.
     
     Returns:
-        Stream: Gated stream.
+        :py:class:`topology_ref:streamsx.topology.topology.Stream`: Gated stream.
     """
     ack_count = uint32(ack_count)
     _op = _Gate([stream,control], maxUnackedTupleCount=max_unacked, numTuplesToAck=ack_count,name=name)
