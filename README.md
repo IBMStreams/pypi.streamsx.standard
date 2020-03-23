@@ -1,20 +1,8 @@
-Exposing SPL standard toolkit as classes and installable package for the Python Application API for IBM Streams.
-
-Latest documentation
-
-* http://streamsxstandard.readthedocs.io
+# streamsx.standard
+This is a step in allowing natural use of Streams for a Python developer. A project that will be registered with PyPi to allow 'pip install' of Python packages that support Python developers interacting with IBM Streams.
 
 Package is organized using standard packaging to upload to PyPi.
+* [https://pypi.org/project/streamsx.standard/](https://pypi.org/project/streamsx.standard/)
 
-* http://pypi.org/project/streamsx.standard/
-
-
-```
-pip install streamsx.standard
-```
-
-The latest code be installed as the `streamsx.standard` package directly from github using:
-
-```
-pip install git+https://github.com/IBMStreams/streamsx.standard.git
-```
+Documentation links:
+* [http://streamsxstandard.readthedocs.io/](http://streamsxstandard.readthedocs.io/)

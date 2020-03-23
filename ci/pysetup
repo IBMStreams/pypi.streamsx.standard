@@ -1,5 +1,0 @@
-echo 'PYTHONHOME' ${PYTHONHOME:?}
-export PATH=$PYTHONHOME/bin:$PATH
-${PYTHONHOME}/bin/python -V
-${PYTHONHOME}/bin/python -m pip install --upgrade dill
-${PYTHONHOME}/bin/python -m pip install --upgrade nose coverage
