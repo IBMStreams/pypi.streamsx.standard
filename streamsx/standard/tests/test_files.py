@@ -183,7 +183,7 @@ class TestDirScan(TestCase):
         fn = os.path.join('etc', 'data.csv') # file name relative to application dir
         dir = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/etc"')
         scanned = topo.source(files.DirectoryScan(directory=dir, pattern='.*\.csv$'))
-        r = scanned.map(files.CSVFilesReader(), schema=StreamSchema('tuple<rstring a, int32 b>'))
+        r = scanned.map(files.CSVFilesReader(file_name='filename'), schema=StreamSchema('tuple<rstring a, int32 b, rstring filename>'))
         r.print()
 
         #result = streamsx.topology.context.submit("TOOLKIT", topo.graph) # creates tk* directory
@@ -202,10 +202,10 @@ class TestDirScan(TestCase):
         fn = os.path.join('etc', 'data.csv') # file name relative to application dir
         dir = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/etc"')
         scanned = topo.source(files.DirectoryScan(directory=dir, pattern='.*\.csv$'))
-        r = scanned.map(files.BlockFilesReader(), schema=StreamSchema('tuple<blob payload>'))
+        r = scanned.map(files.BlockFilesReader(file_name='filename'), schema=StreamSchema('tuple<blob payload, rstring filename>'))
         r.print()
 
-        r1 = scanned.map(files.BlockFilesReader(block_size=256), schema=StreamSchema('tuple<blob payload>'))
+        r1 = scanned.map(files.BlockFilesReader(block_size=256, file_name='conversation_id'), schema=StreamSchema('tuple<blob payload, rstring conversation_id>'))
         r1.print()
 
         r2 = scanned.map(files.BlockFilesReader(block_size=256, compression=Compression.gzip.name), schema=StreamSchema('tuple<blob payload>'))
