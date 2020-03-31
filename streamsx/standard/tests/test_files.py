@@ -183,8 +183,33 @@ class TestDirScan(TestCase):
         fn = os.path.join('etc', 'data.csv') # file name relative to application dir
         dir = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/etc"')
         scanned = topo.source(files.DirectoryScan(directory=dir, pattern='.*\.csv$'))
-        r = scanned.map(files.CSVFilesReader(), schema=StreamSchema('tuple<rstring a, int32 b>'))
+        r = scanned.map(files.CSVFilesReader(file_name='filename'), schema=StreamSchema('tuple<rstring a, int32 b, rstring filename>'))
         r.print()
+
+        #result = streamsx.topology.context.submit("TOOLKIT", topo.graph) # creates tk* directory
+        #print('(TOOLKIT):' + str(result))
+        #assert(result.return_code == 0)
+        result = streamsx.topology.context.submit("BUNDLE", topo.graph)  # creates sab file
+        assert(result.return_code == 0)
+        os.remove(result.bundlePath)
+        os.remove(result.jobConfigPath)
+
+    def test_block_reader(self):
+        topo = Topology()
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        sample_file = os.path.join(script_dir, 'data.csv')
+        topo.add_file_dependency(sample_file, 'etc') # add sample file to etc dir in bundle
+        fn = os.path.join('etc', 'data.csv') # file name relative to application dir
+        dir = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/etc"')
+        scanned = topo.source(files.DirectoryScan(directory=dir, pattern='.*\.csv$'))
+        r = scanned.map(files.BlockFilesReader(file_name='filename'), schema=StreamSchema('tuple<blob payload, rstring filename>'))
+        r.print()
+
+        r1 = scanned.map(files.BlockFilesReader(block_size=256, file_name='conversation_id'), schema=StreamSchema('tuple<blob payload, rstring conversation_id>'))
+        r1.print()
+
+        r2 = scanned.map(files.BlockFilesReader(block_size=256, compression=Compression.gzip.name), schema=StreamSchema('tuple<blob payload>'))
+        r2.print()
 
         #result = streamsx.topology.context.submit("TOOLKIT", topo.graph) # creates tk* directory
         #print('(TOOLKIT):' + str(result))
