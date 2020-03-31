@@ -655,7 +655,7 @@ class BlockFilesReader(streamsx.topology.composite.Map):
 
         topo = Topology()
         s = topo.source(files.DirectoryScan(directory='/opt/ibm/streams-ext/input', pattern='.*\.wav$'))
-        r = s.map(files.BlockFilesReader(block_size=512), schema=StreamSchema('tuple<blob speech>'))
+        r = s.map(files.BlockFilesReader(block_size=512, file_name='filename'), schema=StreamSchema('tuple<blob speech, rstring filename>'))
 
     Example, scanning for files with "zip" file extension and reading them::
 
@@ -670,10 +670,12 @@ class BlockFilesReader(streamsx.topology.composite.Map):
     Args:
         block_size(int): Specifies the block size. If the block_size parameter is not specified, the entire file is read into a single tuple.
         compression(str): Specifies that the source file is compressed. There are three valid values, representing available compression algorithms. These values are: zlib, gzip, and bzip2.
+        file_name(str): Each output tuple contains the name of the file that the tuple is read from. Ensure that the name given with this parameter is part of the output schema.
     """
-    def __init__(self, block_size=None, compression=None):
+    def __init__(self, block_size=None, compression=None, file_name=None):
         self.block_size = block_size
         self.compression = compression
+        self.file_name = file_name
 
     def populate(self, topology, stream, schema, name, **options):
         fe = streamsx.spl.op.Expression.expression(Format.block.name)
@@ -682,6 +684,8 @@ class BlockFilesReader(streamsx.topology.composite.Map):
         if self.compression is not None:
             self.compression = streamsx.spl.op.Expression.expression(self.compression)
         _op = _FileSource(topology, schemas=schema, stream=stream, format=fe, blockSize=self.block_size, compression=self.compression)
+        if self.file_name is not None:
+            setattr(_op, self.file_name, _op.output(_op.outputs[0], _op.expression('FileName()')))
         return _op.outputs[0]
 
 
@@ -708,16 +712,20 @@ class CSVFilesReader(streamsx.topology.composite.Map):
         ignoreExtraFields(bool):  When `True` then if the file contains more
             fields than `schema` has attributes they will be ignored.
             Otherwise if there are extra fields an error is raised.
+        file_name(str): Each output tuple contains the name of the file that the tuple is read from. Ensure that the name given with this parameter is part of the output schema.
     """
-    def __init__(self, header=False, encoding=None, separator=None, ignoreExtraFields=False):
+    def __init__(self, header=False, encoding=None, separator=None, ignoreExtraFields=False, file_name=None):
         self.header = header
         self.encoding = encoding
         self.separator = separator
         self.ignoreExtraFields = ignoreExtraFields
+        self.file_name = file_name
 
     def populate(self, topology, stream, schema, name, **options):
         fe = streamsx.spl.op.Expression.expression(Format.csv.name)
         _op = _FileSource(topology, schemas=schema, stream=stream, format=fe, encoding=self.encoding, separator=self.separator, hasHeaderLine=self.header, ignoreExtraCSVValues=self.ignoreExtraFields)
+        if self.file_name is not None:
+            setattr(_op, self.file_name, _op.output(_op.outputs[0], _op.expression('FileName()')))
         return _op.outputs[0]
 
 
