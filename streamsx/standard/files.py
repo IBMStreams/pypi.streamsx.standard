@@ -643,6 +643,48 @@ class CSVReader(streamsx.topology.composite.Source):
         return _op.outputs[0]
 
 
+class BlockFilesReader(streamsx.topology.composite.Map):
+    """Reads files given by input stream and generates tuples with the file content (block of binary data) on the output stream.
+
+    .. note:: Each input tuple holds the file name to be read
+
+    Example, scanning for files with "wav" file extension and reading them::
+
+        import streamsx.standard.files as files
+        from streamsx.topology.topology import Topology
+
+        topo = Topology()
+        s = topo.source(files.DirectoryScan(directory='/opt/ibm/streams-ext/input', pattern='.*\.wav$'))
+        r = s.map(files.BlockFilesReader(block_size=512), schema=StreamSchema('tuple<blob speech>'))
+
+    Example, scanning for files with "zip" file extension and reading them::
+
+        import streamsx.standard.files as files
+        from streamsx.standard import Compression
+        from streamsx.topology.topology import Topology
+
+        topo = Topology()
+        s = topo.source(files.DirectoryScan(directory='/opt/ibm/streams-ext/input', pattern='.*\.zip$'))
+        r = s.map(files.BlockFilesReader(block_size=1024, compression=Compression.gzip.name), schema=StreamSchema('tuple<blob data>'))
+
+    Args:
+        block_size(int): Specifies the block size. If the block_size parameter is not specified, the entire file is read into a single tuple.
+        compression(str): Specifies that the source file is compressed. There are three valid values, representing available compression algorithms. These values are: zlib, gzip, and bzip2.
+    """
+    def __init__(self, block_size=None, compression=None):
+        self.block_size = block_size
+        self.compression = compression
+
+    def populate(self, topology, stream, schema, name, **options):
+        fe = streamsx.spl.op.Expression.expression(Format.block.name)
+        if self.block_size is not None:
+            self.block_size = streamsx.spl.types.uint32(self.block_size)
+        if self.compression is not None:
+            self.compression = streamsx.spl.op.Expression.expression(self.compression)
+        _op = _FileSource(topology, schemas=schema, stream=stream, format=fe, blockSize=self.block_size, compression=self.compression)
+        return _op.outputs[0]
+
+
 class CSVFilesReader(streamsx.topology.composite.Map):
     """Reads files given by input stream and generates tuples with the file content on the output stream.
 
@@ -655,6 +697,7 @@ class CSVFilesReader(streamsx.topology.composite.Map):
         import streamsx.standard.files as files
         from streamsx.topology.topology import Topology
 
+        topo = Topology()
         s = topo.source(files.DirectoryScan(directory='/opt/ibm/streams-ext/input', pattern='.*\.csv$'))
         r = s.map(files.CSVFilesReader(), schema=StreamSchema('tuple<rstring a, int32 b>'))
 
