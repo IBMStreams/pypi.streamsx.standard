@@ -8,9 +8,9 @@ setup(
   description = 'Standard toolkit integration for IBM Streams',
   long_description = open('DESC.txt').read(),
   author = 'IBM Streams @ github.com',
-  author_email = 'debrunne@us.ibm.com',
+  author_email = 'hegermar@de.ibm.com',
   license='Apache License - Version 2.0',
-  url = 'https://github.com/IBMStreams/streamsx.standard',
+  url = 'https://github.com/IBMStreams/pypi.streamsx.standard',
   keywords = ['streams', 'ibmstreams', 'streaming', 'analytics', 'streaming-analytics'],
   classifiers = [
     'Development Status :: 5 - Production/Stable',

@@ -16,5 +16,5 @@ pip install streamsx.standard
 The latest code be installed as the `streamsx.standard` package directly from github using:
 
 ```
-pip install git+https://github.com/IBMStreams/streamsx.standard.git
+pip install git+https://github.com/IBMStreams/pypi.streamsx.standard.git
 ```
