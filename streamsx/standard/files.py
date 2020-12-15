@@ -615,11 +615,12 @@ class CSVReader(streamsx.topology.composite.Source):
             fields than `schema` has attributes they will be ignored.
             Otherwise if there are extra fields an error is raised.
         hot(bool): Specifies whether the input file is hot, which means it is appended continuously.
+        compression(str): Specifies that the source file is compressed. There are three valid values, representing available compression algorithms. These values are: zlib, gzip, and bzip2. For example, use `Compression.gzip.name` for gzip.
 
     Return:
         (Stream): Stream containing records from the file.
     """
-    def __init__(self, schema, file, header=False, encoding=None, separator=None, ignoreExtraFields=False, hot=False):
+    def __init__(self, schema, file, header=False, encoding=None, separator=None, ignoreExtraFields=False, hot=False, compression=None):
         self.schema = schema
         self.file = file
         self.header = header
@@ -627,6 +628,7 @@ class CSVReader(streamsx.topology.composite.Source):
         self.separator = separator
         self.ignoreExtraFields = ignoreExtraFields
         self.hot = hot
+        self.compression = compression
 
     def populate(self, topology, name, **options):
         fe = streamsx.spl.op.Expression.expression(Format.csv.name)
@@ -639,7 +641,9 @@ class CSVReader(streamsx.topology.composite.Source):
                     print("file="+str(self.file))
             else:
                 raise TypeError(self.file)
-        _op = _FileSource(topology, schemas=self.schema, file=self.file, format=fe, hotFile=self.hot, encoding=self.encoding, separator=self.separator, hasHeaderLine=self.header, ignoreExtraCSVValues=self.ignoreExtraFields)
+        if self.compression is not None:
+            self.compression = streamsx.spl.op.Expression.expression(self.compression)
+        _op = _FileSource(topology, schemas=self.schema, file=self.file, format=fe, hotFile=self.hot, encoding=self.encoding, separator=self.separator, hasHeaderLine=self.header, ignoreExtraCSVValues=self.ignoreExtraFields, compression=self.compression)
         return _op.outputs[0]
 
 
@@ -669,7 +673,7 @@ class BlockFilesReader(streamsx.topology.composite.Map):
 
     Args:
         block_size(int): Specifies the block size. If the block_size parameter is not specified, the entire file is read into a single tuple.
-        compression(str): Specifies that the source file is compressed. There are three valid values, representing available compression algorithms. These values are: zlib, gzip, and bzip2.
+        compression(str): Specifies that the source file is compressed. There are three valid values, representing available compression algorithms. These values are: zlib, gzip, and bzip2. For example, use `Compression.gzip.name` for gzip.
         file_name(str): Each output tuple contains the name of the file that the tuple is read from. Ensure that the name given with this parameter is part of the output schema.
     """
     def __init__(self, block_size=None, compression=None, file_name=None):
@@ -713,17 +717,22 @@ class CSVFilesReader(streamsx.topology.composite.Map):
             fields than `schema` has attributes they will be ignored.
             Otherwise if there are extra fields an error is raised.
         file_name(str): Each output tuple contains the name of the file that the tuple is read from. Ensure that the name given with this parameter is part of the output schema.
+        compression(str): Specifies that the source file is compressed. There are three valid values, representing available compression algorithms. These values are: zlib, gzip, and bzip2. For example, use `Compression.gzip.name` for gzip.
+
     """
-    def __init__(self, header=False, encoding=None, separator=None, ignoreExtraFields=False, file_name=None):
+    def __init__(self, header=False, encoding=None, separator=None, ignoreExtraFields=False, file_name=None, compression=None):
         self.header = header
         self.encoding = encoding
         self.separator = separator
         self.ignoreExtraFields = ignoreExtraFields
         self.file_name = file_name
+        self.compression = compression
 
     def populate(self, topology, stream, schema, name, **options):
         fe = streamsx.spl.op.Expression.expression(Format.csv.name)
-        _op = _FileSource(topology, schemas=schema, stream=stream, format=fe, encoding=self.encoding, separator=self.separator, hasHeaderLine=self.header, ignoreExtraCSVValues=self.ignoreExtraFields)
+        if self.compression is not None:
+            self.compression = streamsx.spl.op.Expression.expression(self.compression)
+        _op = _FileSource(topology, schemas=schema, stream=stream, format=fe, encoding=self.encoding, separator=self.separator, hasHeaderLine=self.header, ignoreExtraCSVValues=self.ignoreExtraFields, compression=self.compression)
         if self.file_name is not None:
             setattr(_op, self.file_name, _op.output(_op.outputs[0], _op.expression('FileName()')))
         return _op.outputs[0]
