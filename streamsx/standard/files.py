@@ -616,6 +616,8 @@ class CSVReader(streamsx.topology.composite.Source):
             Otherwise if there are extra fields an error is raised.
         hot(bool): Specifies whether the input file is hot, which means it is appended continuously.
         compression(str): Specifies that the source file is compressed. There are three valid values, representing available compression algorithms. These values are: zlib, gzip, and bzip2. For example, use `Compression.gzip.name` for gzip.
+            
+            .. versionadded:: 1.1
 
     Return:
         (Stream): Stream containing records from the file.
@@ -718,6 +720,8 @@ class CSVFilesReader(streamsx.topology.composite.Map):
             Otherwise if there are extra fields an error is raised.
         file_name(str): Each output tuple contains the name of the file that the tuple is read from. Ensure that the name given with this parameter is part of the output schema.
         compression(str): Specifies that the source file is compressed. There are three valid values, representing available compression algorithms. These values are: zlib, gzip, and bzip2. For example, use `Compression.gzip.name` for gzip.
+            
+            .. versionadded:: 1.1
 
     """
     def __init__(self, header=False, encoding=None, separator=None, ignoreExtraFields=False, file_name=None, compression=None):

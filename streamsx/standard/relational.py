@@ -75,7 +75,11 @@ class Aggregate(Map):
         Returns:
              Aggregate: Aggregate invocation.
         """
-        _op = Aggregate(window, schema, group=group, name=name)
+        if not isinstance(window, streamsx.topology.topology.Window):
+            raise TypeError(window)
+        _op = Aggregate(window, schema, group, name=name)
+        if (window._config['partitioned']):
+            _op.params['partitionBy'] =  _op.attribute(window._config['partitionBy'])
         return _op
   
     def _output_func(self, name, attribute=None):
@@ -85,14 +89,12 @@ class Aggregate(Map):
         _eofn = _eofn + ')'
         return self.output(self.expression(_eofn))
         
-    def __init__(self, window, schema, group=None, partition=None, aggregateIncompleteWindows=None, aggregateEvictedPartitions=None, name=None):
+    def __init__(self, window, schema, group=None, aggregateIncompleteWindows=None, aggregateEvictedPartitions=None, name=None):
         topology = window.topology
         kind="spl.relational::Aggregate"
         params = dict()
         if group is not None:
             params['groupBy'] = group
-        if partition is not None:
-            params['partitionBy'] = partition
         if aggregateIncompleteWindows is not None:
             params['aggregateIncompleteWindows'] = aggregateIncompleteWindows
         if aggregateEvictedPartitions is not None:
@@ -131,6 +133,26 @@ class Aggregate(Map):
             Expression: Output expression with the type ``int32``.
         """
         return self._output_func('CountGroups')
+
+    def interval_end(self):
+        """Get the end of the current *time-interval* window.
+
+        .. versionadded:: 1.2
+
+        Returns:
+            Expression: Output expression with the type ``timestamp``.
+        """
+        return self._output_func('intervalEnd')
+
+    def interval_start(self):
+        """Get the start of the current *time-interval* window.
+
+        .. versionadded:: 1.2
+
+        Returns:
+            Expression: Output expression with the type ``timestamp``.
+        """
+        return self._output_func('intervalStart')
 
     def max(self, attribute):
         """Maximum value for an input attribute.
@@ -403,33 +425,62 @@ class Functor(Invoke):
         super(Functor, self).__init__(topology,kind,inputs,schemas,params,name)
 
 
-class _Join(Invoke):
+class Join(Invoke):
+    """Correlate tuples from two streams that are based on user-specified match predicates and window configurations.
+
+    The correlation is implemented using the ``spl.relational::Join``
+    SPL primitive operator from the SPL Standard toolkit.
+    """
     @staticmethod
-    def lookup(reference, reference_key, lookup, lookup_key, schema, name=None):
-        _op = Join(reference, lookup.last(0), schemas=schema, name=name)
+    def lookup(reference, reference_key, lookup, lookup_key, schema, match=None, name=None):
+        """Used to correlate tuples from two streams that are based on user-specified match predicates and window configurations.
+
+        When a tuple is received on an input port, it is inserted into the window corresponding to the input port, which causes the window to trigger.
+        As part of the trigger processing, the tuple is compared against all tuples inside the window of the opposing input port.
+        If the tuples match, then an output tuple is produced for each match.
+
+        The ``reference_key`` and ``lookup_key`` parameters are used to specify equijoin match predicates, which result in using a hash-based join implementation.
+
+        Args:
+            reference(streamsx.topology.topology.Window): Input window
+            reference_key(str): Name of the attribute
+            lookup(Stream): Input stream
+            lookup_key(str): Name of the attribute
+            schema(str,StreamSchema): Schema of output stream.
+            match(str): Specifies an expression to be used for matching the tuples. The expression might refer to attributes from both input ports. When this parameter is omitted, the default value of true is used.
+            name(str): Invocation name, defaults to a generated name.
+
+        Returns:
+             Join: Join invocation.
+        """
+        if not isinstance(reference, streamsx.topology.topology.Window):
+            raise TypeError(reference)
+
+        _op = Join(reference, lookup.last(0), schemas=schema, match=match, name=name)
         _op.params['equalityLHS'] = _op.attribute(reference.stream, reference_key)
         _op.params['equalityRHS'] = _op.attribute(lookup, lookup_key)
-        return _op.outputs[0]
 
-    def __init__(self, left, right, schemas, match=None, algorithm=None, defaultTupleLHS=None, defaultTupleRHS=None, equalityLHS=None, equalityRHS=None, partitionByLHS=None, partitionByRHS=None, name=None):
+        partitionByLHS = None
+        if (reference._config['partitioned']):
+            _op.params['partitionByLHS'] = _op.attribute(reference.stream, reference._config['partitionBy'])
+
+        return _op
+
+    def __init__(self, left, right, schemas, match=None, algorithm=None, defaultTupleLHS=None, defaultTupleRHS=None, partitionByRHS=None, name=None):
         topology = left.topology
         kind="spl.relational::Join"
         inputs = [left, right]
         params = dict()
         if match is not None:
-            params['match'] = match
+            params['match'] = self.expression(match)
         if algorithm is not None:
             params['algorithm'] = algorithm
         if defaultTupleLHS is not None:
             params['defaultTupleLHS'] = defaultTupleLHS
         if defaultTupleRHS is not None:
             params['defaultTupleRHS'] = defaultTupleRHS
-        if equalityLHS is not None:
-            params['equalityLHS'] = equalityLHS
-        if equalityRHS is not None:
-            params['equalityRHS'] = equalityRHS
-        if partitionByLHS is not None:
-            params['partitionByLHS'] = partitionByLHS
         if partitionByRHS is not None:
-            params['partitionByRHS'] = partitionByRHS
+            _op.params['partitionByRHS'] = partitionByRHS
         super(Join, self).__init__(topology,kind,inputs,schemas,params,name)
+
+
