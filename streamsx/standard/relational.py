@@ -78,8 +78,10 @@ class Aggregate(Map):
         if not isinstance(window, streamsx.topology.topology.Window):
             raise TypeError(window)
         _op = Aggregate(window, schema, group, name=name)
-        if (window._config['partitioned']):
-            _op.params['partitionBy'] =  _op.attribute(window._config['partitionBy'])
+        if window._config is not None:
+           if 'partitioned' in window._config:
+              if (window._config['partitioned']):
+                 _op.params['partitionBy'] =  _op.attribute(window._config['partitionBy'])
         return _op
   
     def _output_func(self, name, attribute=None):
@@ -153,6 +155,22 @@ class Aggregate(Map):
             Expression: Output expression with the type ``timestamp``.
         """
         return self._output_func('intervalStart')
+
+    def pane_timing(self):
+        """Get timing of a *time-interval* window pane.
+
+        The timing of a window pane triggering in relation to the enclosing operator's watermark that is used for predicting pane completion.
+
+        * "paneEarly": The system has not yet predicted that it has seen all data which may contribute to a pane's window.
+        * "paneOnComplete": The system predicts that it has seen all data which may contribute to a pane's window.
+        * "paneLate": The system encountered new data for a pane's window after predicting no more could arrive.
+
+        .. versionadded:: 1.3
+
+        Returns:
+            Expression: Output expression with the type ``rstring``.
+        """
+        return self._output_func('(rstring)paneTiming')
 
     def max(self, attribute):
         """Maximum value for an input attribute.
@@ -461,8 +479,10 @@ class Join(Invoke):
         _op.params['equalityRHS'] = _op.attribute(lookup, lookup_key)
 
         partitionByLHS = None
-        if (reference._config['partitioned']):
-            _op.params['partitionByLHS'] = _op.attribute(reference.stream, reference._config['partitionBy'])
+        if reference._config is not None:
+           if 'partitioned' in reference._config:
+              if (reference._config['partitioned']):
+                 _op.params['partitionByLHS'] = _op.attribute(reference.stream, reference._config['partitionBy'])
 
         return _op
 
