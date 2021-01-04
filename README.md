@@ -18,3 +18,12 @@ The latest code be installed as the `streamsx.standard` package directly from gi
 ```
 pip install git+https://github.com/IBMStreams/pypi.streamsx.standard.git
 ```
+
+## Test
+
+
+Run the full test with:
+
+    ant test
+
+
