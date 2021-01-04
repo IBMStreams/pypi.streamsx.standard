@@ -91,16 +91,16 @@ class Aggregate(Map):
         _eofn = _eofn + ')'
         return self.output(self.expression(_eofn))
         
-    def __init__(self, window, schema, group=None, aggregateIncompleteWindows=None, aggregateEvictedPartitions=None, name=None):
+    def __init__(self, window, schema, group=None, name=None):
         topology = window.topology
         kind="spl.relational::Aggregate"
         params = dict()
         if group is not None:
             params['groupBy'] = group
-        if aggregateIncompleteWindows is not None:
-            params['aggregateIncompleteWindows'] = aggregateIncompleteWindows
-        if aggregateEvictedPartitions is not None:
-            params['aggregateEvictedPartitions'] = aggregateEvictedPartitions
+        #if aggregateIncompleteWindows is not None:
+        #    params['aggregateIncompleteWindows'] = aggregateIncompleteWindows
+        #if aggregateEvictedPartitions is not None:
+        #    params['aggregateEvictedPartitions'] = aggregateEvictedPartitions
         super(Aggregate, self).__init__(kind,window,schema,params,name)
 
     def count(self):
@@ -478,7 +478,6 @@ class Join(Invoke):
         _op.params['equalityLHS'] = _op.attribute(reference.stream, reference_key)
         _op.params['equalityRHS'] = _op.attribute(lookup, lookup_key)
 
-        partitionByLHS = None
         if reference._config is not None:
            if 'partitioned' in reference._config:
               if (reference._config['partitioned']):
@@ -486,21 +485,21 @@ class Join(Invoke):
 
         return _op
 
-    def __init__(self, left, right, schemas, match=None, algorithm=None, defaultTupleLHS=None, defaultTupleRHS=None, partitionByRHS=None, name=None):
+    def __init__(self, left, right, schemas, match=None, name=None):
         topology = left.topology
         kind="spl.relational::Join"
         inputs = [left, right]
         params = dict()
         if match is not None:
             params['match'] = self.expression(match)
-        if algorithm is not None:
-            params['algorithm'] = algorithm
-        if defaultTupleLHS is not None:
-            params['defaultTupleLHS'] = defaultTupleLHS
-        if defaultTupleRHS is not None:
-            params['defaultTupleRHS'] = defaultTupleRHS
-        if partitionByRHS is not None:
-            _op.params['partitionByRHS'] = partitionByRHS
+        #if algorithm is not None:
+        #    params['algorithm'] = algorithm
+        #if defaultTupleLHS is not None:
+        #    params['defaultTupleLHS'] = defaultTupleLHS
+        #if defaultTupleRHS is not None:
+        #    params['defaultTupleRHS'] = defaultTupleRHS
+        #if partitionByRHS is not None:
+        #    _op.params['partitionByRHS'] = partitionByRHS
         super(Join, self).__init__(topology,kind,inputs,schemas,params,name)
 
 

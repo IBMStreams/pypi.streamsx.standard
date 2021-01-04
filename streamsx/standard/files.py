@@ -239,6 +239,7 @@ class FileSink(streamsx.topology.composite.ForEach):
         self.tuples_per_file = None
         self.write_failure_action = None
         self.write_punctuations = None
+        self.write_state_handler_callbacks = None
         if 'append' in options:
             self.append = options.get('append')
         if 'bytes_per_file' in options:
@@ -277,6 +278,8 @@ class FileSink(streamsx.topology.composite.ForEach):
             self.write_failure_action = options.get('write_failure_action')
         if 'write_punctuations' in options:
             self.write_punctuations = options.get('write_punctuations')
+        if 'write_state_handler_callbacks' in options:
+            self.write_state_handler_callbacks = options.get('write_state_handler_callbacks')
 
     @property
     def append(self):
@@ -499,6 +502,17 @@ The modifiers can be repeated in the string, and are all replaced with their val
     def write_punctuations(self, value):
         self._write_punctuations = value
 
+    @property
+    def write_state_handler_callbacks(self):
+        """
+            bool: Specifies to write to the output file a commented out line that contains the name of the invoked StateHandler callbacks. This parameter is valid only when the file is in csv format.
+        """
+        return self._write_state_handler_callbacks
+
+    @write_state_handler_callbacks.setter
+    def write_state_handler_callbacks(self, value):
+        self._write_state_handler_callbacks = value
+
     def populate(self, topology, stream, name, **options) -> streamsx.topology.topology.Sink:
 
         if self.append is not None:
@@ -547,6 +561,11 @@ The modifiers can be repeated in the string, and are all replaced with their val
                 self.write_punctuations = streamsx.spl.op.Expression.expression('true')
             else:
                 self.write_punctuations = streamsx.spl.op.Expression.expression('false')
+        if self.write_state_handler_callbacks is not None:
+            if self.write_state_handler_callbacks is True:
+                self.write_state_handler_callbacks = streamsx.spl.op.Expression.expression('true')
+            else:
+                self.write_state_handler_callbacks = streamsx.spl.op.Expression.expression('false')
 
         _op = _FileSink(stream=stream, \
                         file=self.file, \
@@ -569,6 +588,7 @@ The modifiers can be repeated in the string, and are all replaced with their val
                         tuplesPerFile=self.tuples_per_file, \
                         writeFailureAction=self.write_failure_action, \
                         writePunctuations=self.write_punctuations, \
+                        writeStateHandlerCallbacks=self.write_state_handler_callbacks, \
                         name=name)
 
         return streamsx.topology.topology.Sink(_op)

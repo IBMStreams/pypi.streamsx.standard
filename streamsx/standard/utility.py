@@ -30,6 +30,7 @@ class Sequence(streamsx.topology.composite.Source):
         period(float): Period of tuple generation in seconds, if `None` then tuples are generated as fast as possible.
         iterations(int): Number of tuples on the stream, if `None` then the stream is infinite.
         delay(float): Delay in seconds before the first tuple is submitted, if `None` then the tuples are submitted as soon as possible.
+        trigger_count(int): Specifies how many tuples are submitted before the operator starts to drain the pipeline of a consistent region and establish a consistent state. 
 
     Example, create a infinite sequence stream of twenty tuples per second::
 
@@ -39,16 +40,28 @@ class Sequence(streamsx.topology.composite.Source):
         topo = Topology()
         seq = topo.source(U.Sequence(period=0.5), name='20Hz')
 
+    Example, start operator of an operator-driven consistent region::
+
+        from streamsx.topology.topology import Topology
+        import streamsx.standard.utility as U
+        from streamsx.topology.state import ConsistentRegionConfig
+
+        topo = Topology()
+        s = topo.source(U.Sequence(iterations=1000, delay=0.1, trigger_count=10))
+        s.set_consistent(ConsistentRegionConfig.operator_driven())
+
+
     """
-    def __init__(self, period:float=None, iterations:int=None, delay:float=None):
+    def __init__(self, period:float=None, iterations:int=None, delay:float=None, trigger_count:int=None):
         self.period = period
         self.iterations = iterations
         self.delay = delay
+        self.trigger_count = trigger_count
 
     def populate(self, topology, name, **options):
-        return _sequence(topology, self.period, self.iterations, self.delay, name)
+        return _sequence(topology, self.period, self.iterations, self.delay, self.trigger_count, name)
 
-def _sequence(topology, period=None, iterations=None, delay=None, name=None):
+def _sequence(topology, period=None, iterations=None, delay=None, trigger_count=None, name=None):
     """Create a sequence stream.
 
     Creates a structured stream with schema :py:const:`SEQUENCE_SCHEMA` with
@@ -59,6 +72,7 @@ def _sequence(topology, period=None, iterations=None, delay=None, name=None):
         period(float): Period of tuple generation in seconds, if `None` then tuples are generated as fast as possible.
         iterations(int): Number of tuples on the stream, if `None` then the stream is infinite.
         delay(float): Delay in seconds before the first tuple is submitted, if `None` then the tuples are submitted as soon as possible.
+        trigger_count(int): Specifies how many tuples are submitted before the operator starts to drain the pipeline of a consistent region and establish a consistent state.
         name(str): Name of the stream, if `None` a generated name is used.
 
     Returns:
@@ -75,7 +89,7 @@ def _sequence(topology, period=None, iterations=None, delay=None, name=None):
         if period is not None:
             name = name + ':period={:.3f}s'.format(period)
 
-    _op = _Beacon(topology, SEQUENCE_SCHEMA, period=period, iterations=iterations, delay=delay, name=name)
+    _op = _Beacon(topology, SEQUENCE_SCHEMA, period=period, iterations=iterations, delay=delay, triggerCount=trigger_count, name=name)
     _op.seq = _op.output('IterationCount()')
     _op.ts = _op.output('getTimestamp()')
     return _op.stream
@@ -93,7 +107,7 @@ class _Beacon(streamsx.spl.op.Source):
         if delay is not None:
             params['initDelay'] = float64(delay)
         if triggerCount is not None:
-            params['triggerCount'] = triggerCount
+            params['triggerCount'] = uint32(triggerCount)
         super(_Beacon, self).__init__(topology,kind,schemas,params,name)
 
 
@@ -151,6 +165,8 @@ class Throttle(streamsx.topology.composite.Map):
     Args:
          rate(float): Throttled rate of the returned stream in tuples/second.
          precise(bool): Try to make the rate precise at the cost of increased overhead.
+         include_punctuations(bool): Specifies whether punctuation is to be included in the rate computation
+         period(float): The period to be used for maintaining the wanted rate in seconds. When making rate adjustments, the Throttle operator considers only the last period, going back from the current time. By default, the period is set to 10.0/rate.
 
     Example throttling a stream ``readings`` to around 10,000 tuples per second::
 
@@ -158,12 +174,14 @@ class Throttle(streamsx.topology.composite.Map):
         readings = readings.map(U.Throttle(rate=10000.0))
 
     """
-    def __init__(self, rate:float, precise:bool=False):
+    def __init__(self, rate:float, precise:bool=False, include_punctuations:bool=False, period:float=None):
         self.rate = rate
         self.precise = precise
+        self.include_punctuations = include_punctuations
+        self.period = period
 
     def populate(self, topology, stream, schema, name, **options):
-        _op = _Throttle(stream, self.rate, self.precise, name=name)
+        _op = _Throttle(stream, self.rate, period=self.period, includePunctuations=self.include_punctuations, precise=self.precise, name=name)
         return _op.stream
 
 
@@ -250,6 +268,8 @@ class Deduplicate(streamsx.topology.composite.Map):
     Args:
         count(int): Number of tuples.
         period(float): Time period to check for duplicates.
+        key(string): Expression used to determine whether a tuple is a duplicate. If this parameter is omitted, the whole tuple is used as the key.
+        flush_on_punctuation(bool): Specifies whether punctuation causes the operator to forget all history of remembered tuples. If this parameter is not specified, the default value is False. If the parameter value is True, all remembered keys are erased when punctuation is received.
 
     Example discarding duplicate tuples wth `a=1` and `a=2`::
 
@@ -260,38 +280,41 @@ class Deduplicate(streamsx.topology.composite.Map):
         s = s.map(U.Deduplicate(count=10))
 
     """
-    def __init__(self, count:int=None, period:float=None):
+    def __init__(self, count:int=None, period:float=None, key:str=None, flush_on_punctuation:bool=None):
         self.count = count
         self.period = period
+        self.key = key
+        self.flush_on_punctuation = flush_on_punctuation
 
     def populate(self, topology, stream, schema, name, **options):
-        return _deduplicate(stream, self.count, self.period, name)
+        return _deduplicate(stream, self.count, self.period, self.key, self.flush_on_punctuation, name)
 
-def _deduplicate(stream, count=None, period=None, name=None):
+def _deduplicate(stream, count=None, period=None, key=None, flush_on_punctuation=None, name=None):
     if count and period:
         raise ValueError("Cannot set count and period")
 
-    _op = _DeDuplicate(stream, count=count, timeOut=period, name=name)
+    _op = _DeDuplicate(stream, count=count, timeOut=period, key=key, flushOnPunctuation=flush_on_punctuation, name=name)
     return _op.stream
 
 class _DeDuplicate (streamsx.spl.op.Map):
-    def __init__(self, stream, timeOut=None, count=None, deltaAttribute=None, delta=None, key=None, resetOnDuplicate=None, flushOnPunctuation=None, name=None):
+    def __init__(self, stream, timeOut=None, count=None, key=None, flushOnPunctuation=None, name=None):
         kind="spl.utility::DeDuplicate"
         params = dict()
         if timeOut is not None:
             params['timeOut'] = float64(timeOut)
         if count is not None:
             params['count'] = uint64(int(count))
-        if deltaAttribute is not None:
-            params['deltaAttribute'] = deltaAttribute
-        if delta is not None:
-            params['delta'] = delta
         if key is not None:
-            params['key'] = key
-        if resetOnDuplicate is not None:
-            params['resetOnDuplicate'] = resetOnDuplicate
+            params['key'] = self.expression(key)
         if flushOnPunctuation is not None:
             params['flushOnPunctuation'] = flushOnPunctuation
+        #if deltaAttribute is not None:
+        #    params['deltaAttribute'] = deltaAttribute
+        #if delta is not None:
+        #    params['delta'] = delta
+        #if resetOnDuplicate is not None:
+        #    params['resetOnDuplicate'] = resetOnDuplicate
+
         super(_DeDuplicate, self).__init__(kind,stream,params=params,name=name)
 
 class Delay(streamsx.topology.composite.Map):
@@ -331,7 +354,7 @@ class _Delay(streamsx.spl.op.Map):
             params['bufferSize'] = uint32(max_delayed)
         super(_Delay, self).__init__(kind,stream,params=params,name=name)
 
-def pair(stream0, stream1, matching=None, name=None):
+def pair(stream0, stream1, matching=None, buffer_size:int=None, name=None):
     """Pair tuples across two streams.
 
     This method is used to merge results from performing
@@ -383,14 +406,15 @@ def pair(stream0, stream1, matching=None, name=None):
         stream0(:py:class:`topology_ref:streamsx.topology.topology.Stream`): First input stream.
         stream1(:py:class:`topology_ref:streamsx.topology.topology.Stream`): Second input stream.
         matching(str): Attribute name for matching tuples.
+        buffer_size(int): Specifies the size of the internal buffer that is used to queue up tuples from an input port that do not yet have matching tuples from other ports. This parameter is not supported in a consistent region.
         name(str): Name of resultant stream, defaults to a generated name.
 
     Returns:
         :py:class:`topology_ref:streamsx.topology.topology.Stream`: Paired stream.
     """
-    return merge([stream0, stream1], matching, name)
+    return merge([stream0, stream1], matching, buffer_size, name)
 
-def merge(inputs, matching=None, name=None):
+def merge(inputs, matching=None, buffer_size=None, name=None):
     """Merge tuples across two (or more) streams.
 
     This method is used to merge results from performing
@@ -421,12 +445,13 @@ def merge(inputs, matching=None, name=None):
     Args:
         inputs(list[:py:class:`topology_ref:streamsx.topology.topology.Stream`]): Input streams to be matched.
         matching(str): Attribute name for matching.
+        buffer_size(int): Specifies the size of the internal buffer that is used to queue up tuples from an input port that do not yet have matching tuples from other ports. This parameter is not supported in a consistent region.
         name(str): Name of resultant stream, defaults to a generated name.
 
     Returns:
         :py:class:`topology_ref:streamsx.topology.topology.Stream`: Merged stream.
     """
-    _op = _Pair(inputs, matching, name=name)
+    _op = _Pair(inputs, matching, buffer_size=buffer_size, name=name)
     return _op.outputs[0]
 
 class _Pair(streamsx.spl.op.Invoke):
