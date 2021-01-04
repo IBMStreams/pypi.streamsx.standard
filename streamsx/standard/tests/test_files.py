@@ -152,6 +152,64 @@ class TestCSV(TestCase):
         tester.tuple_count(to_file, 5)
         tester.test(self.test_ctxtype, self.test_config)
 
+    def test_filesreader_compile_only(self):
+        topo = Topology()
+        s = topo.source(files.DirectoryScan(directory='/opt/ibm/streams-ext/input', pattern='.*\.zip$')) 
+        r = s.map(files.CSVFilesReader(compression='gzip'), schema=StreamSchema('tuple<rstring a, int32 b>')) 
+        result = streamsx.topology.context.submit("BUNDLE", topo.graph)  # creates sab file
+        assert(result.return_code == 0)
+        os.remove(result.bundlePath)
+        os.remove(result.jobConfigPath)
+
+    def test_filesink_compile_only(self):
+        topo = Topology()
+        s = topo.source(U.Sequence(iterations=5))
+        F = U.SEQUENCE_SCHEMA.extend(StreamSchema('tuple<rstring filename>'))
+        fo = R.Functor.map(s, F)     
+        fo.filename = fo.output(fo.outputs[0], '"myfile_{id}.txt"')
+        to_file = fo.outputs[0]
+
+        config = {
+            'format': Format.txt.name,
+            'encoding': 'ISO_8859-9',
+            'compression': Compression.gzip.name,
+            'move_file_to_directory': '/tmp',
+            'close_mode': CloseMode.time.name,
+            'time_per_file': '10.0'
+        }
+        fsink = files.FileSink(file=streamsx.spl.op.Expression.expression('"'+self.dir+'/"+'+'filename'), **config)
+        to_file.for_each(fsink)
+
+        s1 = topo.source(range(13))
+        sch1 = 'tuple<rstring a>'
+        s1 = s1.map(lambda v: (';A'+str(v), v+7), schema=sch1)
+        config1 = {
+            'format': Format.line.name,
+            'eol_marker': ';',
+            'close_mode': CloseMode.size.name,
+            'bytes_per_file': '5'
+        }
+        fsink1 = files.FileSink(file='a', **config1)
+        s1.for_each(fsink1)
+
+        s2 = topo.source(U.Sequence(iterations=5))
+        from streamsx.topology.state import ConsistentRegionConfig
+        s2.set_consistent(ConsistentRegionConfig.periodic(20.0))
+        config2 = {
+            'format': Format.csv.name,
+            'write_state_handler_callbacks': True,
+            'truncate_on_reset': True,
+            'has_delay_field': True,
+            'separator': ';'
+        }
+        fsink2 = files.FileSink(file='b', **config2)
+        s2.for_each(fsink2)
+
+        result = streamsx.topology.context.submit("BUNDLE", topo.graph)  # creates sab file
+        assert(result.return_code == 0)
+        os.remove(result.bundlePath)
+        os.remove(result.jobConfigPath)
+
 
 class TestParams(TestCase):
 
@@ -193,6 +251,27 @@ class TestDirScan(TestCase):
         assert(result.return_code == 0)
         os.remove(result.bundlePath)
         os.remove(result.jobConfigPath)
+
+
+    def test_dir_scan_params(self):
+        topo = Topology()
+        dir = streamsx.spl.op.Expression.expression('getApplicationDir()+"'+'/etc"')
+
+        config = {
+            'init_delay': 5.0,
+            'sleep_time': 5.0,
+            'sort_by': 'name',
+            'order': 'descending',
+            'move_to_directory': '/tmp',
+            'ignore_existing_files_at_startup': True,
+            'ignore_dot_files': True
+        }
+        scanned = topo.source(files.DirectoryScan(directory=dir, pattern='.*\.csv$', **config))
+
+        sr = streamsx.topology.context.submit('BUNDLE', topo)
+        self.assertEqual(0, sr['return_code'])
+        os.remove(sr.bundlePath)
+        os.remove(sr.jobConfigPath)
 
     def test_block_reader(self):
         topo = Topology()

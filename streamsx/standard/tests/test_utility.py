@@ -1,12 +1,13 @@
 from unittest import TestCase
 import time
-
+import os
 
 import streamsx.standard.utility as U
 
 from streamsx.topology.topology import Topology, PendingStream
 from streamsx.topology.tester import Tester
 from streamsx.topology.schema import StreamSchema
+import streamsx.topology.context
 
 from streamsx.spl.op import Expression
 
@@ -111,12 +112,22 @@ class TestUtility(TestCase):
      
     def test_sequence(self):
         topo = Topology()
-        s = topo.source(U.Sequence(iterations=122))
+        s = topo.source(U.Sequence(iterations=122, delay=0.1))
 
         tester = Tester(topo)
         tester.tuple_check(s, lambda x: 'seq' in x and 'ts' in x)
         tester.tuple_count(s, 122)
         tester.test(self.test_ctxtype, self.test_config)
+
+    def test_sequence_cr_operator_driven(self):
+        topo = Topology()
+        s = topo.source(U.Sequence(iterations=122, delay=0.1, trigger_count=10))
+        from streamsx.topology.state import ConsistentRegionConfig
+        s.set_consistent(ConsistentRegionConfig.operator_driven(drain_timeout=50, reset_timeout=20))
+        sr = streamsx.topology.context.submit('BUNDLE', topo)
+        self.assertEqual(0, sr['return_code'])
+        os.remove(sr.bundlePath)
+        os.remove(sr.jobConfigPath)
 
     def test_sequence_period(self):
         topo = Topology()
@@ -163,6 +174,15 @@ class TestUtility(TestCase):
         tester.tuple_check(s, ThrottleCheck())
         tester.test(self.test_ctxtype, self.test_config)
 
+    def test_throttle_compile_only(self):
+        topo = Topology()
+        s = topo.source(U.Sequence(iterations=40))
+        s = s.map(U.Throttle(rate=2.0, precise=True, include_punctuations=True, period=0.2))
+        sr = streamsx.topology.context.submit('BUNDLE', topo)
+        self.assertEqual(0, sr['return_code'])
+        os.remove(sr.bundlePath)
+        os.remove(sr.jobConfigPath)
+
     def test_deduplicate(self):
         topo = Topology()
         s = topo.source([1,2,1,4,5,2])
@@ -180,6 +200,16 @@ class TestUtility(TestCase):
         s = s.map(lambda v : {'a':v}, schema='tuple<int32 a>')
         self.assertRaises(ValueError, s.map, U.Deduplicate(count=1, period=1))
 
+    def test_deduplicate_compile_only(self):
+        topo = Topology()
+        s = topo.source([1,2,1,4,5,2])
+        s = s.map(lambda v : {'a':v}, schema='tuple<int32 a>')
+        s = s.map(U.Deduplicate(period=1, key='a<=2', flush_on_punctuation=True))
+        sr = streamsx.topology.context.submit('BUNDLE', topo)
+        self.assertEqual(0, sr['return_code'])
+        os.remove(sr.bundlePath)
+        os.remove(sr.jobConfigPath)
+
     def test_pair(self):
         topo = Topology()
         s = topo.source(U.Sequence(iterations=932))
@@ -193,6 +223,18 @@ class TestUtility(TestCase):
         tester.tuple_count(r, 932*2)
         tester.tuple_check(r, PairCheck())
         tester.test(self.test_ctxtype, self.test_config)
+
+    def test_pair_compile_only(self):
+        topo = Topology()
+        s = topo.source(U.Sequence(iterations=932))
+        rschema = U.SEQUENCE_SCHEMA.extend(StreamSchema('tuple<float64 score>'))
+        r0 = s.map(lambda t : (t['seq'], t['ts'], 1.0), schema=rschema)
+        r1 = s.map(lambda t : (t['seq'], t['ts'], 2.0), schema=rschema)
+        r = U.pair(r0, r1, buffer_size=2048)
+        sr = streamsx.topology.context.submit('BUNDLE', topo)
+        self.assertEqual(0, sr['return_code'])
+        os.remove(sr.bundlePath)
+        os.remove(sr.jobConfigPath)
 
     def test_pair_matched(self):
         topo = Topology()
