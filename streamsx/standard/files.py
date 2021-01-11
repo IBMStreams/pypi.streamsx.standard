@@ -762,6 +762,40 @@ class CSVFilesReader(streamsx.topology.composite.Map):
         return _op.outputs[0]
 
 
+class LineFilesReader(streamsx.topology.composite.Map):
+    """Reads files line by line given by input stream and generates tuples with the file content on the output stream.
+
+    .. note:: Each input tuple holds the file name to be read
+
+    Example, scanning for files with "json" file extension and reading them line by line::
+
+        import streamsx.standard.files as files
+        from streamsx.topology.topology import Topology
+
+        topo = Topology()
+        s = topo.source(files.DirectoryScan(directory='/opt/ibm/streams-ext/input', pattern='.*\.json$'))
+        r = s.map(files.CSVFilesReader(), schema=CommonSchema.String)
+
+    Args:
+        file_name(str): Each output tuple contains the name of the file that the tuple is read from. Ensure that the name given with this parameter is part of the output schema.
+        compression(str): Specifies that the source file is compressed. There are three valid values, representing available compression algorithms. These values are: zlib, gzip, and bzip2. For example, use `Compression.gzip.name` for gzip.
+            
+    .. versionadded:: 1.5
+
+    """
+    def __init__(self, file_name=None, compression=None):
+        self.file_name = file_name
+        self.compression = compression
+
+    def populate(self, topology, stream, schema, name, **options):
+        fe = streamsx.spl.op.Expression.expression(Format.line.name)
+        if self.compression is not None:
+            self.compression = streamsx.spl.op.Expression.expression(self.compression)
+        _op = _FileSource(topology, schemas=schema, stream=stream, format=fe, compression=self.compression)
+        if self.file_name is not None:
+            setattr(_op, self.file_name, _op.output(_op.outputs[0], _op.expression('FileName()')))
+        return _op.outputs[0]
+
 class CSVWriter(streamsx.topology.composite.ForEach):
     """Write a stream as a comma separated value file.
 

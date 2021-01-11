@@ -102,3 +102,6 @@ ENV/
 /.project
 /docs/source/generated/
 /nose_runs/
+
+.DS_Store
+/**/.DS_Store

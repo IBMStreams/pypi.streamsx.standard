@@ -205,6 +205,9 @@ class TestCSV(TestCase):
         fsink2 = files.FileSink(file='b', **config2)
         s2.for_each(fsink2)
 
+        s3 = topo.source(files.DirectoryScan(directory='/tmp', pattern='.*\.gz$'))
+        file_line_stream = s3.map(files.LineFilesReader(compression=Compression.gzip.name), schema=CommonSchema.String)
+
         result = streamsx.topology.context.submit("BUNDLE", topo.graph)  # creates sab file
         assert(result.return_code == 0)
         os.remove(result.bundlePath)
